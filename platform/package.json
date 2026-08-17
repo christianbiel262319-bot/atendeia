@@ -1,0 +1,24 @@
+{
+  "name": "atendeia-platform",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspace @atendeia/api && npm run build --workspace @atendeia/web",
+    "dev:web": "npm run dev --workspace @atendeia/web",
+    "dev:api": "npm run dev --workspace @atendeia/api",
+    "test": "npm run test --workspace @atendeia/api && npm run test --workspace @atendeia/web",
+    "lint": "npm run lint --workspace @atendeia/api && npm run lint --workspace @atendeia/web",
+    "db:generate": "npm run db:generate --workspace @atendeia/api",
+    "db:migrate": "npm run db:migrate --workspace @atendeia/api",
+    "db:deploy": "npm run db:deploy --workspace @atendeia/api",
+    "admin:promote": "npm run admin:promote --workspace @atendeia/api"
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  }
+}

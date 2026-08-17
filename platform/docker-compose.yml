@@ -1,0 +1,137 @@
+name: atendeia
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:80"
+    depends_on:
+      api:
+        condition: service_healthy
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      APP_ORIGIN: ${APP_ORIGIN:?Defina APP_ORIGIN no arquivo .env}
+      DATABASE_URL: postgresql://atendeia:${POSTGRES_PASSWORD}@postgres:5432/atendeia?schema=public
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?Defina JWT_ACCESS_SECRET no arquivo .env}
+      JWT_ISSUER: ${JWT_ISSUER:-atendeia-api}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-atendeia-web}
+      SECRETS_ENCRYPTION_KEY: ${SECRETS_ENCRYPTION_KEY:?Defina SECRETS_ENCRYPTION_KEY no arquivo .env}
+      COOKIE_SECURE: "true"
+      TRUST_PROXY: "true"
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      META_GRAPH_API_VERSION: ${META_GRAPH_API_VERSION:-v26.0}
+      META_APP_SECRET: ${META_APP_SECRET:?Defina META_APP_SECRET no arquivo .env}
+      WHATSAPP_WEBHOOK_VERIFY_TOKEN: ${WHATSAPP_WEBHOOK_VERIFY_TOKEN:?Defina WHATSAPP_WEBHOOK_VERIFY_TOKEN no arquivo .env}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:?Defina OPENAI_API_KEY no arquivo .env}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.6-luna}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      MERCADO_PAGO_ACCESS_TOKEN: ${MERCADO_PAGO_ACCESS_TOKEN:-}
+      MERCADO_PAGO_WEBHOOK_SECRET: ${MERCADO_PAGO_WEBHOOK_SECRET:-}
+      ASAAS_API_KEY: ${ASAAS_API_KEY:-}
+      ASAAS_WEBHOOK_TOKEN: ${ASAAS_WEBHOOK_TOKEN:-}
+      ASAAS_API_URL: ${ASAAS_API_URL:-https://api.asaas.com/v3}
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-}
+    ports:
+      - "127.0.0.1:4000:4000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4000/health/live"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    command: ["node", "apps/api/dist/src/worker.js"]
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      APP_ORIGIN: ${APP_ORIGIN:?Defina APP_ORIGIN no arquivo .env}
+      DATABASE_URL: postgresql://atendeia:${POSTGRES_PASSWORD}@postgres:5432/atendeia?schema=public
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?Defina JWT_ACCESS_SECRET no arquivo .env}
+      JWT_ISSUER: ${JWT_ISSUER:-atendeia-api}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-atendeia-web}
+      SECRETS_ENCRYPTION_KEY: ${SECRETS_ENCRYPTION_KEY:?Defina SECRETS_ENCRYPTION_KEY no arquivo .env}
+      COOKIE_SECURE: "true"
+      TRUST_PROXY: "true"
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      META_GRAPH_API_VERSION: ${META_GRAPH_API_VERSION:-v26.0}
+      META_APP_SECRET: ${META_APP_SECRET:?Defina META_APP_SECRET no arquivo .env}
+      WHATSAPP_WEBHOOK_VERIFY_TOKEN: ${WHATSAPP_WEBHOOK_VERIFY_TOKEN:?Defina WHATSAPP_WEBHOOK_VERIFY_TOKEN no arquivo .env}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:?Defina OPENAI_API_KEY no arquivo .env}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.6-luna}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: build
+    command: ["npm", "run", "db:deploy", "--workspace", "@atendeia/api"]
+    environment:
+      DATABASE_URL: postgresql://atendeia:${POSTGRES_PASSWORD}@postgres:5432/atendeia?schema=public
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: atendeia
+      POSTGRES_USER: atendeia
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD no arquivo .env}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U atendeia -d atendeia"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?Defina REDIS_PASSWORD no arquivo .env}"]
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres_data:
+  redis_data:

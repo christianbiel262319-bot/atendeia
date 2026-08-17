@@ -1,0 +1,523 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+  CANCELED
+}
+
+enum UserStatus {
+  ACTIVE
+  LOCKED
+  DISABLED
+}
+
+enum MembershipRole {
+  OWNER
+  ADMIN
+  MANAGER
+  AGENT
+  VIEWER
+}
+
+enum ConnectionStatus {
+  PENDING
+  CONNECTED
+  DISCONNECTED
+  ERROR
+}
+
+enum ConversationStatus {
+  OPEN
+  WAITING_HUMAN
+  WITH_HUMAN
+  RESOLVED
+  ARCHIVED
+}
+
+enum MessageDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum MessageSender {
+  CUSTOMER
+  AI
+  HUMAN
+  SYSTEM
+}
+
+enum MessageStatus {
+  RECEIVED
+  QUEUED
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+enum KnowledgeStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum SecretType {
+  WHATSAPP_ACCESS_TOKEN
+  WHATSAPP_VERIFY_TOKEN
+  OPENAI_API_KEY
+  STRIPE_SECRET_KEY
+  STRIPE_WEBHOOK_SECRET
+  MERCADO_PAGO_ACCESS_TOKEN
+  ASAAS_API_KEY
+  CLOUDINARY_API_SECRET
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  SUSPENDED
+}
+
+enum PaymentProvider {
+  STRIPE
+  MERCADO_PAGO
+  ASAAS
+}
+
+enum WebhookStatus {
+  RECEIVED
+  PROCESSING
+  PROCESSED
+  FAILED
+  IGNORED
+}
+
+model Tenant {
+  id                    String                  @id @default(uuid()) @db.Uuid
+  name                  String                  @db.VarChar(160)
+  slug                  String                  @unique @db.VarChar(80)
+  status                TenantStatus            @default(ACTIVE)
+  timezone              String                  @default("America/Sao_Paulo") @db.VarChar(80)
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+  memberships           Membership[]
+  refreshSessions       RefreshSession[]
+  mfaSecrets            MfaSecret[]
+  auditLogs             AuditLog[]
+  secrets               TenantSecret[]
+  whatsappConnections   WhatsAppConnection[]
+  products              Product[]
+  services              Service[]
+  faqs                  Faq[]
+  businessHours         BusinessHour[]
+  aiConfiguration       AiConfiguration?
+  contacts              Contact[]
+  conversations         Conversation[]
+  messages              Message[]
+  webhookEvents         WebhookEvent[]
+  subscriptions         Subscription[]
+  payments              Payment[]
+  teamInvitations       TeamInvitation[]
+  mediaAssets           MediaAsset[]
+  billingWebhookEvents  BillingWebhookEvent[]
+
+  @@index([status])
+}
+
+model User {
+  id              String           @id @default(uuid()) @db.Uuid
+  email           String           @unique @db.VarChar(254)
+  passwordHash    String           @db.VarChar(120)
+  fullName        String           @db.VarChar(160)
+  status          UserStatus       @default(ACTIVE)
+  failedLogins    Int              @default(0)
+  lockedUntil     DateTime?
+  lastLoginAt     DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  isSuperAdmin    Boolean          @default(false)
+  memberships     Membership[]
+  refreshSessions RefreshSession[]
+  mfaSecrets      MfaSecret[]
+  auditLogs       AuditLog[]       @relation("AuditActor")
+  mediaAssets     MediaAsset[]     @relation("MediaCreator")
+
+  @@index([status])
+}
+
+model Membership {
+  id        String         @id @default(uuid()) @db.Uuid
+  tenantId  String         @db.Uuid
+  userId    String         @db.Uuid
+  role      MembershipRole @default(AGENT)
+  active    Boolean        @default(true)
+  mfaEnabled Boolean       @default(false)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  tenant    Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, userId])
+  @@index([tenantId, active])
+  @@index([userId, active])
+}
+
+model TeamInvitation {
+  id              String         @id @default(uuid()) @db.Uuid
+  tenantId        String         @db.Uuid
+  email           String         @db.VarChar(254)
+  role            MembershipRole @default(AGENT)
+  tokenHash       String         @unique @db.Char(64)
+  createdByUserId String         @db.Uuid
+  expiresAt       DateTime
+  acceptedAt      DateTime?
+  revokedAt       DateTime?
+  createdAt       DateTime       @default(now())
+  tenant          Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, email])
+  @@index([tenantId, expiresAt])
+}
+
+model RefreshSession {
+  id                String    @id @default(uuid()) @db.Uuid
+  tenantId          String    @db.Uuid
+  userId            String    @db.Uuid
+  familyId          String    @db.Uuid
+  tokenHash         String    @unique @db.Char(64)
+  csrfHash          String    @db.Char(64)
+  ipHash            String?   @db.Char(64)
+  userAgentHash     String?   @db.Char(64)
+  expiresAt         DateTime
+  lastUsedAt        DateTime?
+  revokedAt         DateTime?
+  revokeReason      String?   @db.VarChar(80)
+  replacedByTokenId String?   @db.Uuid
+  createdAt         DateTime  @default(now())
+  tenant            Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, userId, familyId])
+  @@index([expiresAt])
+}
+
+model MfaSecret {
+  id               String    @id @default(uuid()) @db.Uuid
+  tenantId         String    @db.Uuid
+  userId           String    @db.Uuid
+  secretCiphertext String    @db.Text
+  keyVersion       Int       @default(1)
+  verifiedAt       DateTime?
+  lastUsedStep     BigInt?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  tenant           Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, userId])
+  @@index([tenantId])
+}
+
+model AuditLog {
+  id            String   @id @default(uuid()) @db.Uuid
+  tenantId      String   @db.Uuid
+  actorUserId   String?  @db.Uuid
+  action        String   @db.VarChar(100)
+  resourceType  String   @db.VarChar(80)
+  resourceId    String?  @db.VarChar(100)
+  ipHash        String?  @db.Char(64)
+  userAgentHash String?  @db.Char(64)
+  metadata      Json?
+  createdAt     DateTime @default(now())
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  actor         User?    @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, action])
+}
+
+model TenantSecret {
+  id         String     @id @default(uuid()) @db.Uuid
+  tenantId   String     @db.Uuid
+  type       SecretType
+  ciphertext String     @db.Text
+  keyVersion Int        @default(1)
+  lastFour   String?    @db.VarChar(4)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, type])
+  @@index([tenantId])
+}
+
+model WhatsAppConnection {
+  id                  String           @id @default(uuid()) @db.Uuid
+  tenantId            String           @db.Uuid
+  phoneNumberId       String           @unique @db.VarChar(80)
+  businessAccountId   String           @db.VarChar(80)
+  displayPhoneNumber  String?          @db.VarChar(32)
+  status              ConnectionStatus @default(PENDING)
+  accessTokenSecretId String?          @db.Uuid
+  verifyTokenSecretId String?          @db.Uuid
+  connectedAt         DateTime?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  tenant              Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, status])
+}
+
+model Product {
+  id          String          @id @default(uuid()) @db.Uuid
+  tenantId    String          @db.Uuid
+  name        String          @db.VarChar(160)
+  description String          @db.Text
+  price       Decimal?        @db.Decimal(14, 2)
+  currency    String          @default("BRL") @db.Char(3)
+  status      KnowledgeStatus @default(DRAFT)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  tenant      Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, name])
+  @@index([tenantId, status])
+}
+
+model Service {
+  id              String          @id @default(uuid()) @db.Uuid
+  tenantId        String          @db.Uuid
+  name            String          @db.VarChar(160)
+  description     String          @db.Text
+  durationMinutes Int?
+  price           Decimal?        @db.Decimal(14, 2)
+  currency        String          @default("BRL") @db.Char(3)
+  status          KnowledgeStatus @default(DRAFT)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  tenant          Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, name])
+  @@index([tenantId, status])
+}
+
+model Faq {
+  id        String          @id @default(uuid()) @db.Uuid
+  tenantId  String          @db.Uuid
+  question  String          @db.Text
+  answer    String          @db.Text
+  status    KnowledgeStatus @default(DRAFT)
+  sortOrder Int             @default(0)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  tenant    Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, status, sortOrder])
+}
+
+model BusinessHour {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @db.Uuid
+  weekday   Int
+  opensAt   String?  @db.Char(5)
+  closesAt  String?  @db.Char(5)
+  isClosed  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, weekday])
+  @@index([tenantId])
+}
+
+model AiConfiguration {
+  id                  String   @id @default(uuid()) @db.Uuid
+  tenantId            String   @unique @db.Uuid
+  enabled             Boolean  @default(false)
+  tone                String   @default("profissional e cordial") @db.VarChar(120)
+  minimumConfidence   Decimal  @default(0.75) @db.Decimal(3, 2)
+  fallbackMessage     String?  @db.Text
+  transferMessage     String?  @db.Text
+  maxContextMessages  Int      @default(20)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  tenant              Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model Contact {
+  id              String         @id @default(uuid()) @db.Uuid
+  tenantId        String         @db.Uuid
+  whatsappUserId  String         @db.VarChar(80)
+  phoneE164       String?        @db.VarChar(20)
+  displayName     String?        @db.VarChar(160)
+  email           String?        @db.VarChar(254)
+  tags            String[]       @default([])
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  tenant          Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  conversations   Conversation[]
+
+  @@unique([tenantId, whatsappUserId])
+  @@index([tenantId, createdAt])
+}
+
+model Conversation {
+  id                   String             @id @default(uuid()) @db.Uuid
+  tenantId             String             @db.Uuid
+  contactId            String             @db.Uuid
+  status               ConversationStatus @default(OPEN)
+  assignedMembershipId String?            @db.Uuid
+  needsHumanReason     String?            @db.VarChar(200)
+  openedAt             DateTime           @default(now())
+  resolvedAt           DateTime?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  tenant               Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contact              Contact            @relation(fields: [contactId], references: [id], onDelete: Restrict)
+  messages             Message[]
+
+  @@index([tenantId, status, updatedAt])
+  @@index([tenantId, contactId])
+}
+
+model Message {
+  id                  String           @id @default(uuid()) @db.Uuid
+  tenantId            String           @db.Uuid
+  conversationId      String           @db.Uuid
+  externalMessageId   String?          @db.VarChar(120)
+  direction           MessageDirection
+  sender              MessageSender
+  status              MessageStatus
+  body                String           @db.Text
+  aiConfidence        Decimal?         @db.Decimal(4, 3)
+  aiCanAnswer         Boolean?
+  aiNeedsHuman        Boolean?
+  aiReason            String?          @db.VarChar(240)
+  providerPayloadHash String?          @db.Char(64)
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  tenant              Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  conversation        Conversation     @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, externalMessageId])
+  @@index([tenantId, conversationId, createdAt])
+  @@index([tenantId, status])
+}
+
+model WebhookEvent {
+  id              String        @id @default(uuid()) @db.Uuid
+  tenantId        String        @db.Uuid
+  externalEventId String        @db.VarChar(160)
+  eventType       String        @db.VarChar(100)
+  payloadHash     String        @db.Char(64)
+  payload         Json
+  status          WebhookStatus @default(RECEIVED)
+  attempts        Int           @default(0)
+  processedAt     DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, externalEventId])
+  @@index([tenantId, status, createdAt])
+}
+
+model Plan {
+  id             String         @id @default(uuid()) @db.Uuid
+  code           String         @unique @db.VarChar(50)
+  name           String         @db.VarChar(100)
+  active         Boolean        @default(true)
+  monthlyPrice   Decimal        @db.Decimal(14, 2)
+  currency       String         @default("BRL") @db.Char(3)
+  limits         Json
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  subscriptions  Subscription[]
+}
+
+model Subscription {
+  id                     String             @id @default(uuid()) @db.Uuid
+  tenantId               String             @db.Uuid
+  planId                 String             @db.Uuid
+  provider               PaymentProvider
+  providerSubscriptionId String?            @db.VarChar(160)
+  status                 SubscriptionStatus @default(TRIALING)
+  currentPeriodStart     DateTime?
+  currentPeriodEnd       DateTime?
+  canceledAt             DateTime?
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+  tenant                 Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  plan                   Plan               @relation(fields: [planId], references: [id], onDelete: Restrict)
+  payments               Payment[]
+
+  @@index([tenantId, status])
+  @@unique([provider, providerSubscriptionId])
+}
+
+model Payment {
+  id                String          @id @default(uuid()) @db.Uuid
+  tenantId          String          @db.Uuid
+  subscriptionId    String          @db.Uuid
+  provider          PaymentProvider
+  providerPaymentId String          @db.VarChar(160)
+  amount            Decimal         @db.Decimal(14, 2)
+  currency          String          @default("BRL") @db.Char(3)
+  status            String          @db.VarChar(60)
+  paidAt            DateTime?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  tenant            Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  subscription      Subscription    @relation(fields: [subscriptionId], references: [id], onDelete: Restrict)
+
+  @@unique([provider, providerPaymentId])
+  @@index([tenantId, createdAt])
+}
+
+model BillingWebhookEvent {
+  id              String          @id @default(uuid()) @db.Uuid
+  tenantId        String          @db.Uuid
+  provider        PaymentProvider
+  externalEventId String          @db.VarChar(180)
+  eventType       String          @db.VarChar(120)
+  payloadHash     String          @db.Char(64)
+  payload         Json
+  status          WebhookStatus   @default(RECEIVED)
+  processedAt     DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  tenant          Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, externalEventId])
+  @@index([tenantId, provider, createdAt])
+}
+
+model MediaAsset {
+  id              String   @id @default(uuid()) @db.Uuid
+  tenantId        String   @db.Uuid
+  createdByUserId String   @db.Uuid
+  publicId        String   @db.VarChar(240)
+  secureUrl       String   @db.Text
+  resourceType    String   @db.VarChar(40)
+  format          String?  @db.VarChar(30)
+  bytes           Int?
+  width           Int?
+  height          Int?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy       User     @relation("MediaCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+
+  @@unique([tenantId, publicId])
+  @@index([tenantId, createdAt])
+}
