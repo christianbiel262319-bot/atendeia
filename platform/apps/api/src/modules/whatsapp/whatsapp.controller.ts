@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import { env } from "../../config/env.js";
-import { forbidden } from "../../core/errors/app-error.js";
+import { AppError, forbidden } from "../../core/errors/app-error.js";
 import { connectWhatsAppSchema } from "./whatsapp.schemas.js";
 import { WhatsAppService } from "./whatsapp.service.js";
 import { verifyMetaSignature } from "./webhook-security.js";
@@ -18,6 +18,13 @@ export class WhatsAppController {
   }
 
   verifyWebhook(request: Request, response: Response): void {
+    if (!env.WHATSAPP_WEBHOOK_VERIFY_TOKEN) {
+      throw new AppError(
+        503,
+        "PROVIDER_NOT_CONFIGURED",
+        "Configuração necessária: o token de verificação do webhook da Meta não foi definido",
+      );
+    }
     const mode = request.query["hub.mode"];
     const token = request.query["hub.verify_token"];
     const challenge = request.query["hub.challenge"];
@@ -34,6 +41,13 @@ export class WhatsAppController {
   }
 
   async receiveWebhook(request: Request, response: Response): Promise<void> {
+    if (!env.META_APP_SECRET) {
+      throw new AppError(
+        503,
+        "PROVIDER_NOT_CONFIGURED",
+        "Configuração necessária: o segredo do aplicativo da Meta não foi definido",
+      );
+    }
     const rawBody = Buffer.isBuffer(request.body) ? request.body : Buffer.alloc(0);
     if (!verifyMetaSignature(rawBody, request.get("x-hub-signature-256"))) {
       throw forbidden("Assinatura de webhook inválida");

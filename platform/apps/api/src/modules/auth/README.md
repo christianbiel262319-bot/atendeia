@@ -12,4 +12,7 @@ O MFA usa TOTP RFC 6238. O segredo é criptografado com AES-256-GCM. O último p
 
 ## Auditoria
 
-Cadastro, login e alterações de MFA geram eventos de auditoria. IP e user-agent são registrados somente como hashes com chave, reduzindo exposição de dados pessoais.
+Cadastro, login, falhas conhecidas de login, logout e alterações de MFA geram
+eventos de auditoria. IP e user-agent são registrados somente como hashes com
+chave, reduzindo exposição de dados pessoais. Senhas e tokens nunca são
+incluídos em logs ou auditoria.

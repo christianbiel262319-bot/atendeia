@@ -2,6 +2,7 @@ import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
 import { env } from "../../config/env.js";
 import { logger } from "../../config/logger.js";
+import { AppError } from "../../core/errors/app-error.js";
 import { prisma } from "../../infra/database/prisma.js";
 import { KnowledgeService } from "../knowledge/knowledge.service.js";
 import { aiAnswerSchema, applyConfidencePolicy, type AiAnswer } from "./ai.contract.js";
@@ -11,7 +12,9 @@ import type { aiConfigurationSchema } from "./ai.schemas.js";
 import type { TenantContext } from "../../core/tenant/tenant-context.js";
 
 const knowledgeService = new KnowledgeService();
-const openai = new OpenAI({ apiKey: env.OPENAI_API_KEY, timeout: 20_000, maxRetries: 2 });
+const openai = env.OPENAI_API_KEY
+  ? new OpenAI({ apiKey: env.OPENAI_API_KEY, timeout: 20_000, maxRetries: 2 })
+  : null;
 
 export class AiService {
   async getConfiguration(context: TenantContext) {
@@ -22,6 +25,13 @@ export class AiService {
     context: TenantContext,
     input: z.infer<typeof aiConfigurationSchema>,
   ) {
+    if (input.enabled && !env.OPENAI_API_KEY) {
+      throw new AppError(
+        503,
+        "PROVIDER_NOT_CONFIGURED",
+        "Configuração necessária: a chave da OpenAI ainda não foi definida no servidor",
+      );
+    }
     const configuration = await prisma.aiConfiguration.upsert({
       where: { tenantId: context.tenantId },
       create: { tenantId: context.tenantId, ...input },
@@ -70,6 +80,16 @@ export class AiService {
         confidence: 0,
         needsHuman: true,
         reason: "NO_RELEVANT_CONTEXT",
+      };
+    }
+
+    if (!openai) {
+      return {
+        answer: transferMessage,
+        canAnswer: false,
+        confidence: 0,
+        needsHuman: true,
+        reason: "AI_PROVIDER_NOT_CONFIGURED",
       };
     }
 

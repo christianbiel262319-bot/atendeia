@@ -1,5 +1,6 @@
 import bcrypt from "bcrypt";
 import { randomBytes, randomUUID } from "node:crypto";
+import { logger } from "../../config/logger.js";
 import type { MembershipRole } from "../../generated/prisma/enums.js";
 import { prisma } from "../../infra/database/prisma.js";
 import { conflict, forbidden, unauthorized } from "../../core/errors/app-error.js";
@@ -104,10 +105,23 @@ export class AuthService {
 
     if (!user) {
       await bcrypt.hash(input.password, passwordCost);
+      logger.warn(
+        {
+          emailHash: keyedHash(input.email),
+          ipHash: fingerprint.ip ? keyedHash(fingerprint.ip) : undefined,
+        },
+        "Authentication failed",
+      );
       throw unauthorized("E-mail ou senha inválidos");
     }
 
     if (user.status !== "ACTIVE" || (user.lockedUntil && user.lockedUntil > new Date())) {
+      await this.auditLoginFailure(
+        user.memberships.map((membership) => membership.tenantId),
+        user.id,
+        "ACCOUNT_UNAVAILABLE",
+        fingerprint,
+      );
       throw forbidden("Conta temporariamente indisponível");
     }
 
@@ -122,6 +136,12 @@ export class AuthService {
             failedLogins >= lockThreshold ? new Date(Date.now() + lockDurationMs) : null,
         },
       });
+      await this.auditLoginFailure(
+        user.memberships.map((membership) => membership.tenantId),
+        user.id,
+        "INVALID_CREDENTIALS",
+        fingerprint,
+      );
       throw unauthorized("E-mail ou senha inválidos");
     }
 
@@ -266,17 +286,25 @@ export class AuthService {
     };
   }
 
-  async logout(refreshToken: string | undefined, context?: TenantContext): Promise<void> {
-    if (!refreshToken) return;
-    const tokenHash = sha256(refreshToken);
-    await prisma.refreshSession.updateMany({
-      where: {
-        tokenHash,
-        revokedAt: null,
-        ...(context ? { tenantId: context.tenantId, userId: context.userId } : {}),
-      },
-      data: { revokedAt: new Date(), revokeReason: "LOGOUT" },
-    });
+  async logout(
+    refreshToken: string | undefined,
+    context: TenantContext | undefined,
+    fingerprint: RequestFingerprint,
+  ): Promise<void> {
+    if (refreshToken) {
+      const tokenHash = sha256(refreshToken);
+      await prisma.refreshSession.updateMany({
+        where: {
+          tokenHash,
+          revokedAt: null,
+          ...(context ? { tenantId: context.tenantId, userId: context.userId } : {}),
+        },
+        data: { revokedAt: new Date(), revokeReason: "LOGOUT" },
+      });
+    }
+    if (context) {
+      await this.audit(context.tenantId, context.userId, "auth.logout", fingerprint);
+    }
   }
 
   async beginMfaSetup(context: TenantContext) {
@@ -388,6 +416,34 @@ export class AuthService {
         ipHash: fingerprint.ip ? keyedHash(fingerprint.ip) : null,
         userAgentHash: fingerprint.userAgent ? keyedHash(fingerprint.userAgent) : null,
       },
+    });
+  }
+
+  private async auditLoginFailure(
+    tenantIds: string[],
+    actorUserId: string,
+    reason: string,
+    fingerprint: RequestFingerprint,
+  ): Promise<void> {
+    logger.warn(
+      {
+        userId: actorUserId,
+        reason,
+        ipHash: fingerprint.ip ? keyedHash(fingerprint.ip) : undefined,
+      },
+      "Authentication failed",
+    );
+    if (tenantIds.length === 0) return;
+    await prisma.auditLog.createMany({
+      data: tenantIds.map((tenantId) => ({
+        tenantId,
+        actorUserId,
+        action: "auth.login_failed",
+        resourceType: "session",
+        ipHash: fingerprint.ip ? keyedHash(fingerprint.ip) : null,
+        userAgentHash: fingerprint.userAgent ? keyedHash(fingerprint.userAgent) : null,
+        metadata: { reason },
+      })),
     });
   }
 }

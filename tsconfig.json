@@ -19,7 +19,7 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./platform/apps/web/src/*"]
     }
   },
   "include": [

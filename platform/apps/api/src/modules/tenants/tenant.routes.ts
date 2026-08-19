@@ -7,6 +7,9 @@ const service = new TenantService();
 export const tenantRouter = Router();
 
 tenantRouter.use(asyncHandler(requireTenant));
+tenantRouter.get("/capabilities", (_request, response) => {
+  response.json({ data: service.capabilities() });
+});
 tenantRouter.get(
   "/onboarding",
   asyncHandler(async (request, response) => {

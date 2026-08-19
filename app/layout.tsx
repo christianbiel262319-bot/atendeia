@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import "./globals.css";
+import "../platform/apps/web/src/styles.css";
 
 export const metadata: Metadata = {
   title: "AtendeIA",

@@ -4,8 +4,9 @@ import { env } from "../../config/env.js";
 export function verifyMetaSignature(
   rawBody: Buffer,
   signatureHeader: string | undefined,
-  secret = env.META_APP_SECRET,
+  secret: string | undefined = env.META_APP_SECRET,
 ): boolean {
+  if (!secret) return false;
   if (!signatureHeader?.startsWith("sha256=")) return false;
   const received = signatureHeader.slice("sha256=".length);
   if (!/^[a-f0-9]{64}$/iu.test(received)) return false;

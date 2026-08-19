@@ -6,6 +6,7 @@ import { logger } from "../config/logger.js";
 import { prisma } from "../infra/database/prisma.js";
 import { publishTenantEvent } from "../infra/realtime/pubsub.js";
 import { AiService } from "../modules/ai/ai.service.js";
+import { shouldRunAiForConversation } from "../modules/conversations/conversation-policy.js";
 import { WhatsAppOutboundService } from "../modules/whatsapp/outbound.service.js";
 
 const jobSchema = z.object({ tenantId: z.uuid(), webhookEventId: z.uuid() });
@@ -133,11 +134,16 @@ async function processInboundMessage(
     update: { status: "RECEIVED" },
   });
 
-  if (!body) {
-    await prisma.conversation.updateMany({
-      where: { id: conversation.id, tenantId },
-      data: { status: "WAITING_HUMAN", needsHumanReason: "UNSUPPORTED_MESSAGE_TYPE" },
+  if (!shouldRunAiForConversation(conversation)) {
+    await publishTenantEvent(realtimePublisher, tenantId, {
+      type: "conversation.updated",
+      conversationId: conversation.id,
     });
+    return;
+  }
+
+  if (!body) {
+    await markWaitingForHuman(tenantId, conversation.id, "UNSUPPORTED_MESSAGE_TYPE");
     await publishTenantEvent(realtimePublisher, tenantId, {
       type: "conversation.updated",
       conversationId: conversation.id,
@@ -153,10 +159,7 @@ async function processInboundMessage(
   });
   const answer = await aiService.answer({ tenantId, question: body, history: history.reverse() });
   if (answer.needsHuman) {
-    await prisma.conversation.updateMany({
-      where: { id: conversation.id, tenantId },
-      data: { status: "WAITING_HUMAN", needsHumanReason: answer.reason },
-    });
+    await markWaitingForHuman(tenantId, conversation.id, answer.reason);
   }
 
   await sendAutomatedAnswer({
@@ -170,6 +173,28 @@ async function processInboundMessage(
     type: "conversation.updated",
     conversationId: conversation.id,
   });
+}
+
+async function markWaitingForHuman(
+  tenantId: string,
+  conversationId: string,
+  reason: string,
+): Promise<void> {
+  await prisma.$transaction([
+    prisma.conversation.updateMany({
+      where: { id: conversationId, tenantId },
+      data: { status: "WAITING_HUMAN", needsHumanReason: reason },
+    }),
+    prisma.auditLog.create({
+      data: {
+        tenantId,
+        action: "conversation.transferred_to_human",
+        resourceType: "conversation",
+        resourceId: conversationId,
+        metadata: { reason, source: "AI" },
+      },
+    }),
+  ]);
 }
 
 async function sendAutomatedAnswer(input: {

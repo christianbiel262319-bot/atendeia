@@ -12,7 +12,7 @@ export function PageHeader({ eyebrow, title, description, action }: { eyebrow: s
     <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
       <div>
         <span className="text-[10px] font-bold tracking-[0.16em] text-slate-400">{eyebrow}</span>
-        <h1 className="mt-2 text-3xl font-semibold tracking-[-0.045em] text-slate-900">{title}</h1>
+        <h1 className="mt-2 text-[length:var(--font-size-title)] font-semibold tracking-[-0.045em] text-slate-900">{title}</h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">{description}</p>
       </div>
       {action}
@@ -34,13 +34,28 @@ export function EmptyState({ title, description, action }: { title: string; desc
 }
 
 export function ErrorNotice({ message }: { message: string }) {
-  return <p role="alert" className="flex items-start gap-2 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700"><AlertCircle className="mt-0.5 shrink-0" size={16} />{message}</p>;
+  return <p role="alert" className="flex items-start gap-2 rounded-brand border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700"><AlertCircle className="mt-0.5 shrink-0" size={16} />{message}</p>;
+}
+
+export function SuccessNotice({ message }: { message: string }) {
+  return <p role="status" className="rounded-brand border border-brand-100 bg-brand-50 px-4 py-3 text-sm text-brand-800">{message}</p>;
+}
+
+export function LoadingState({ label = "Carregando dados" }: { label?: string }) {
+  return (
+    <div className="grid gap-3" role="status" aria-label={label}>
+      {[0, 1, 2].map((item) => (
+        <div className="h-24 animate-pulse rounded-[var(--radius-card)] border border-app-line bg-white" key={item} />
+      ))}
+      <span className="sr-only">{label}</span>
+    </div>
+  );
 }
 
 export function StatusPill({ value }: { value: string }) {
   const positive = ["ACTIVE", "CONNECTED", "OPEN", "SENT", "DELIVERED", "READ", "PAID"].includes(value);
   const attention = ["WAITING_HUMAN", "TRIALING", "PAST_DUE", "PENDING", "DRAFT"].includes(value);
-  return <span className={cn("inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wide", positive ? "bg-emerald-50 text-emerald-700" : attention ? "bg-amber-50 text-amber-700" : "bg-slate-100 text-slate-600")}>{translateStatus(value)}</span>;
+  return <span className={cn("inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wide", positive ? "bg-brand-50 text-brand-700" : attention ? "bg-amber-50 text-amber-700" : "bg-slate-100 text-slate-600")}>{translateStatus(value)}</span>;
 }
 
 function translateStatus(value: string): string {

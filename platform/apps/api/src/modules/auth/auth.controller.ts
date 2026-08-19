@@ -82,7 +82,11 @@ export class AuthController {
 
   async logout(request: Request, response: Response): Promise<void> {
     assertCsrf(request);
-    await service.logout(request.cookies?.[refreshCookie] as string | undefined, request.tenant);
+    await service.logout(
+      request.cookies?.[refreshCookie] as string | undefined,
+      request.tenant,
+      fingerprint(request),
+    );
     clearSessionCookies(response);
     response.status(204).send();
   }

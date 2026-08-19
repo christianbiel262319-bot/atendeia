@@ -67,12 +67,29 @@ export class ConversationService {
       });
       if (!membership) throw new AppError(404, "MEMBER_NOT_FOUND", "Membro não encontrado");
     }
-    const result = await prisma.conversation.updateMany({
-      where: { id: conversationId, tenantId: context.tenantId },
-      data: {
-        assignedMembershipId: membershipId,
-        status: membershipId ? "WITH_HUMAN" : "WAITING_HUMAN",
-      },
+    const result = await prisma.$transaction(async (tx) => {
+      const updated = await tx.conversation.updateMany({
+        where: { id: conversationId, tenantId: context.tenantId },
+        data: {
+          assignedMembershipId: membershipId,
+          status: membershipId ? "WITH_HUMAN" : "WAITING_HUMAN",
+        },
+      });
+      if (updated.count === 1) {
+        await tx.auditLog.create({
+          data: {
+            tenantId: context.tenantId,
+            actorUserId: context.userId,
+            action: membershipId
+              ? "conversation.assigned_to_human"
+              : "conversation.unassigned",
+            resourceType: "conversation",
+            resourceId: conversationId,
+            metadata: { membershipId },
+          },
+        });
+      }
+      return updated;
     });
     if (result.count !== 1) throw new AppError(404, "NOT_FOUND", "Conversa não encontrada");
     return this.get(context, conversationId);
@@ -117,7 +134,7 @@ export class ConversationService {
         assignedMembershipId: conversation.assignedMembershipId ?? actorMembership.id,
       },
     });
-    return outboundService.send({
+    const message = await outboundService.send({
       tenantId: context.tenantId,
       conversationId: conversation.id,
       phoneNumberId: connection.phoneNumberId,
@@ -125,12 +142,37 @@ export class ConversationService {
       body,
       sender: "HUMAN",
     });
+    await prisma.auditLog.create({
+      data: {
+        tenantId: context.tenantId,
+        actorUserId: context.userId,
+        action: "conversation.human_message_sent",
+        resourceType: "conversation",
+        resourceId: conversation.id,
+        metadata: { messageId: message.id },
+      },
+    });
+    return message;
   }
 
   async resolve(context: TenantContext, conversationId: string): Promise<void> {
-    const result = await prisma.conversation.updateMany({
-      where: { id: conversationId, tenantId: context.tenantId },
-      data: { status: "RESOLVED", resolvedAt: new Date(), needsHumanReason: null },
+    const result = await prisma.$transaction(async (tx) => {
+      const updated = await tx.conversation.updateMany({
+        where: { id: conversationId, tenantId: context.tenantId },
+        data: { status: "RESOLVED", resolvedAt: new Date(), needsHumanReason: null },
+      });
+      if (updated.count === 1) {
+        await tx.auditLog.create({
+          data: {
+            tenantId: context.tenantId,
+            actorUserId: context.userId,
+            action: "conversation.resolved",
+            resourceType: "conversation",
+            resourceId: conversationId,
+          },
+        });
+      }
+      return updated;
     });
     if (result.count !== 1) throw new AppError(404, "NOT_FOUND", "Conversa não encontrada");
   }

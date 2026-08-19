@@ -95,7 +95,7 @@ export function LoginPage() {
 
       {stage.type === "tenant" ? (
         <div className="grid gap-3">
-          <div className="mb-2 flex items-center gap-3 rounded-xl border border-emerald-100 bg-emerald-50 p-4 text-sm text-emerald-900">
+          <div className="mb-2 flex items-center gap-3 rounded-brand border border-brand-100 bg-brand-50 p-4 text-sm text-brand-900">
             <Building2 size={20} /> Escolha a empresa que deseja abrir.
           </div>
           {stage.tenants.map((tenant) => (
@@ -109,7 +109,7 @@ export function LoginPage() {
 
       {stage.type === "mfa" ? (
         <div className="grid gap-5">
-          <div className="flex items-start gap-3 rounded-xl border border-emerald-100 bg-emerald-50 p-4 text-sm leading-6 text-emerald-900">
+          <div className="flex items-start gap-3 rounded-brand border border-brand-100 bg-brand-50 p-4 text-sm leading-6 text-brand-900">
             <KeyRound className="mt-0.5 shrink-0" size={19} />
             Digite o código de seis números do seu aplicativo autenticador.
           </div>
@@ -131,12 +131,12 @@ export function LoginPage() {
       ) : null}
 
       <p className="mt-7 text-center text-sm text-slate-500">
-        Ainda não tem conta? <Link className="font-semibold text-emerald-800 hover:underline" to="/criar-conta">Criar conta</Link>
+        Ainda não tem conta? <Link className="font-semibold text-brand-800 hover:underline" to="/criar-conta">Criar conta</Link>
       </p>
     </AuthShell>
   );
 }
 
 function ErrorMessage({ children }: { children: string }) {
-  return <p role="alert" className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">{children}</p>;
+  return <p role="alert" className="rounded-brand border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">{children}</p>;
 }

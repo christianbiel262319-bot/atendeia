@@ -2,8 +2,13 @@ import { randomUUID } from "node:crypto";
 import { AppError, forbidden } from "../../core/errors/app-error.js";
 import { secureToken, sha256 } from "../../core/security/crypto.js";
 import type { TenantContext } from "../../core/tenant/tenant-context.js";
-import type { MembershipRole } from "../../generated/prisma/enums.js";
 import { prisma } from "../../infra/database/prisma.js";
+import {
+  canInviteRole,
+  canUpdateMembership,
+  type AssignableTeamRole,
+  type InvitableTeamRole,
+} from "./team-policy.js";
 
 export class TeamService {
   list(context: TenantContext) {
@@ -21,7 +26,10 @@ export class TeamService {
     });
   }
 
-  async invite(context: TenantContext, input: { email: string; role: Exclude<MembershipRole, "OWNER"> }) {
+  async invite(context: TenantContext, input: { email: string; role: InvitableTeamRole }) {
+    if (!canInviteRole(context.role, input.role)) {
+      throw forbidden("Seu perfil não pode conceder esta função");
+    }
     const existingUser = await prisma.user.findUnique({
       where: { email: input.email },
       select: { memberships: { where: { tenantId: context.tenantId }, select: { id: true } } },
@@ -100,12 +108,21 @@ export class TeamService {
   async updateMember(
     context: TenantContext,
     membershipId: string,
-    input: { role?: MembershipRole | undefined; active?: boolean | undefined },
+    input: { role?: AssignableTeamRole | undefined; active?: boolean | undefined },
   ) {
     const membership = await prisma.membership.findFirst({
       where: { id: membershipId, tenantId: context.tenantId },
     });
     if (!membership) throw new AppError(404, "NOT_FOUND", "Membro não encontrado");
+    if (!canUpdateMembership({
+      actorRole: context.role,
+      actorUserId: context.userId,
+      targetUserId: membership.userId,
+      targetRole: membership.role,
+      ...(input.role !== undefined ? { nextRole: input.role } : {}),
+    })) {
+      throw forbidden("Seu perfil não pode alterar este membro ou conceder esta função");
+    }
     if (membership.userId === context.userId && input.active === false) {
       throw forbidden("Você não pode desativar a própria associação");
     }

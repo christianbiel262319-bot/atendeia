@@ -28,9 +28,9 @@ const envSchema = z.object({
   TRUST_PROXY: booleanFromString.default(false),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
   META_GRAPH_API_VERSION: z.string().regex(/^v\d+\.\d+$/).default("v26.0"),
-  META_APP_SECRET: z.string().min(16),
-  WHATSAPP_WEBHOOK_VERIFY_TOKEN: z.string().min(16),
-  OPENAI_API_KEY: z.string().min(20),
+  META_APP_SECRET: optionalSecret(),
+  WHATSAPP_WEBHOOK_VERIFY_TOKEN: optionalSecret(),
+  OPENAI_API_KEY: optionalSecret(20),
   OPENAI_MODEL: z.string().min(1).default("gpt-5.6-luna"),
   STRIPE_SECRET_KEY: optionalSecret(),
   STRIPE_WEBHOOK_SECRET: optionalSecret(),
@@ -44,14 +44,17 @@ const envSchema = z.object({
   CLOUDINARY_API_SECRET: optionalSecret(),
 });
 
-const parsed = envSchema.safeParse(process.env);
+export type Environment = z.infer<typeof envSchema>;
 
-if (!parsed.success) {
-  const details = parsed.error.issues
-    .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
-    .join("; ");
-  throw new Error(`Configuração de ambiente inválida: ${details}`);
+export function parseEnvironment(input: NodeJS.ProcessEnv): Environment {
+  const parsed = envSchema.safeParse(input);
+  if (!parsed.success) {
+    const details = parsed.error.issues
+      .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+      .join("; ");
+    throw new Error(`Configuração de ambiente inválida: ${details}`);
+  }
+  return parsed.data;
 }
 
-export const env = parsed.data;
-export type Environment = typeof env;
+export const env = parseEnvironment(process.env);

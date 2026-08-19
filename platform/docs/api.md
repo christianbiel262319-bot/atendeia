@@ -10,7 +10,7 @@ com Zod. Respostas seguem `{ data: ... }`; erros seguem
 | Módulo | Rotas |
 | --- | --- |
 | Auth | `/v1/auth/register`, `/login`, `/refresh`, `/logout`, `/mfa/*`, `/me` |
-| Onboarding | `/v1/tenant/onboarding` |
+| Tenant | `/v1/tenant/onboarding`, `/v1/tenant/capabilities` |
 | WhatsApp | `/v1/whatsapp/connection`, `/v1/webhooks/whatsapp` |
 | Conhecimento | `/v1/knowledge/*` |
 | IA | `/v1/ai/configuration` |
@@ -23,3 +23,6 @@ com Zod. Respostas seguem `{ data: ... }`; erros seguem
 
 O webhook do WhatsApp e os webhooks financeiros são montados antes do parser JSON
 para validar a assinatura contra os bytes originais do corpo.
+
+`GET /v1/tenant/capabilities` expõe somente flags booleanas de disponibilidade
+de provedores. Chaves e segredos nunca fazem parte da resposta.

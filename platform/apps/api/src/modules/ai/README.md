@@ -5,3 +5,7 @@ O adaptador usa a Responses API com Structured Outputs e `store: false`. O model
 `answer`, `canAnswer`, `confidence`, `needsHuman`, `reason`.
 
 Há duas barreiras antes da resposta: contexto relevante precisa existir e a confiança precisa alcançar o limite configurado. Falha, recusa, contexto ausente ou baixa confiança sempre resultam em transferência humana. O prompt trata a mensagem do cliente como entrada não confiável para reduzir prompt injection.
+
+A API pode iniciar sem chave da OpenAI. Nesse estado, a configuração pode ser
+preparada com a IA desligada, a ativação é recusada com
+`PROVIDER_NOT_CONFIGURED` e nenhuma chamada externa é simulada.

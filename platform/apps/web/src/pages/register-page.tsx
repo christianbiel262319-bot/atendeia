@@ -72,13 +72,13 @@ export function RegisterPage() {
         <Field label="Confirme a senha" error={form.formState.errors.confirmPassword?.message}>
           <Input autoComplete="new-password" type="password" placeholder="Repita a senha" {...form.register("confirmPassword")} />
         </Field>
-        {serverError ? <p role="alert" className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">{serverError}</p> : null}
+        {serverError ? <p role="alert" className="rounded-brand border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">{serverError}</p> : null}
         <Button className="mt-2 w-full" type="submit" disabled={form.formState.isSubmitting}>
           {form.formState.isSubmitting ? "Criando conta…" : "Criar minha conta"} <ArrowRight size={17} />
         </Button>
       </form>
       <p className="mt-7 text-center text-sm text-slate-500">
-        Já possui conta? <Link className="font-semibold text-emerald-800 hover:underline" to="/entrar">Entrar</Link>
+        Já possui conta? <Link className="font-semibold text-brand-800 hover:underline" to="/entrar">Entrar</Link>
       </p>
     </AuthShell>
   );

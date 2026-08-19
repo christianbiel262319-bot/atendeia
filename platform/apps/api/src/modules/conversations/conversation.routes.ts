@@ -9,8 +9,16 @@ export const conversationRouter = Router();
 conversationRouter.use(asyncHandler(requireTenant));
 conversationRouter.get("/", asyncHandler(controller.list.bind(controller)));
 conversationRouter.get("/:id", asyncHandler(controller.get.bind(controller)));
-conversationRouter.post("/:id/messages", asyncHandler(controller.send.bind(controller)));
-conversationRouter.post("/:id/resolve", asyncHandler(controller.resolve.bind(controller)));
+conversationRouter.post(
+  "/:id/messages",
+  requireRoles("OWNER", "ADMIN", "MANAGER", "AGENT"),
+  asyncHandler(controller.send.bind(controller)),
+);
+conversationRouter.post(
+  "/:id/resolve",
+  requireRoles("OWNER", "ADMIN", "MANAGER", "AGENT"),
+  asyncHandler(controller.resolve.bind(controller)),
+);
 conversationRouter.put(
   "/:id/assignment",
   requireRoles("OWNER", "ADMIN", "MANAGER"),

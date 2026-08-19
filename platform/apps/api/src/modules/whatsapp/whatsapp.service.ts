@@ -1,5 +1,6 @@
 import type { Prisma } from "../../generated/prisma/client.js";
-import { forbidden } from "../../core/errors/app-error.js";
+import { env } from "../../config/env.js";
+import { AppError, forbidden } from "../../core/errors/app-error.js";
 import { encryptSecret, sha256 } from "../../core/security/crypto.js";
 import type { TenantContext } from "../../core/tenant/tenant-context.js";
 import { prisma } from "../../infra/database/prisma.js";
@@ -14,6 +15,13 @@ export class WhatsAppService {
     context: TenantContext,
     input: { phoneNumberId: string; businessAccountId: string; accessToken: string },
   ) {
+    if (!env.META_APP_SECRET || !env.WHATSAPP_WEBHOOK_VERIFY_TOKEN) {
+      throw new AppError(
+        503,
+        "PROVIDER_NOT_CONFIGURED",
+        "Configuração necessária: finalize as credenciais do aplicativo e do webhook da Meta no servidor",
+      );
+    }
     const existing = await prisma.whatsAppConnection.findUnique({
       where: { phoneNumberId: input.phoneNumberId },
       select: { tenantId: true },
