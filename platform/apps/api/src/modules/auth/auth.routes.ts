@@ -16,10 +16,23 @@ const authenticationLimiter = rateLimit({
 });
 
 authRouter.get("/me", asyncHandler(requireTenant), asyncHandler(controller.me.bind(controller)));
+authRouter.get("/capabilities", controller.capabilities.bind(controller));
 authRouter.post("/register", authenticationLimiter, asyncHandler(controller.register.bind(controller)));
+authRouter.post("/invitations/inspect", authenticationLimiter, asyncHandler(controller.inspectInvitation.bind(controller)));
+authRouter.post("/invitations/register", authenticationLimiter, asyncHandler(controller.registerInvitation.bind(controller)));
 authRouter.post("/login", authenticationLimiter, asyncHandler(controller.login.bind(controller)));
 authRouter.post("/mfa/verify-login", authenticationLimiter, asyncHandler(controller.completeMfaLogin.bind(controller)));
+authRouter.post("/password/forgot", authenticationLimiter, asyncHandler(controller.forgotPassword.bind(controller)));
+authRouter.post("/password/reset", authenticationLimiter, asyncHandler(controller.resetPassword.bind(controller)));
+authRouter.post("/email/confirm", authenticationLimiter, asyncHandler(controller.confirmEmail.bind(controller)));
 authRouter.post("/refresh", authenticationLimiter, asyncHandler(controller.refresh.bind(controller)));
 authRouter.post("/logout", asyncHandler(requireTenant), asyncHandler(controller.logout.bind(controller)));
+authRouter.patch("/profile", asyncHandler(requireTenant), asyncHandler(controller.updateProfile.bind(controller)));
+authRouter.post("/password/change", asyncHandler(requireTenant), asyncHandler(controller.changePassword.bind(controller)));
+authRouter.post("/email/request", asyncHandler(requireTenant), asyncHandler(controller.requestEmailVerification.bind(controller)));
+authRouter.get("/sessions", asyncHandler(requireTenant), asyncHandler(controller.listSessions.bind(controller)));
+authRouter.post("/sessions/revoke-others", asyncHandler(requireTenant), asyncHandler(controller.revokeOtherSessions.bind(controller)));
+authRouter.delete("/sessions/:id", asyncHandler(requireTenant), asyncHandler(controller.revokeSession.bind(controller)));
 authRouter.post("/mfa/setup", asyncHandler(requireTenant), asyncHandler(controller.beginMfaSetup.bind(controller)));
 authRouter.post("/mfa/confirm", asyncHandler(requireTenant), asyncHandler(controller.confirmMfa.bind(controller)));
+authRouter.post("/mfa/disable", asyncHandler(requireTenant), asyncHandler(controller.disableMfa.bind(controller)));

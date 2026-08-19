@@ -42,6 +42,11 @@ const envSchema = z.object({
   CLOUDINARY_CLOUD_NAME: optionalSecret(1),
   CLOUDINARY_API_KEY: optionalSecret(1),
   CLOUDINARY_API_SECRET: optionalSecret(),
+  RESEND_API_KEY: optionalSecret(10),
+  EMAIL_FROM: z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z.email().optional(),
+  ),
 });
 
 export type Environment = z.infer<typeof envSchema>;

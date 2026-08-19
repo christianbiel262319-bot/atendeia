@@ -4,6 +4,36 @@ import { prisma } from "../../infra/database/prisma.js";
 import { env } from "../../config/env.js";
 
 export class TenantService {
+  async profile(context: TenantContext) {
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: context.tenantId },
+      select: { id: true, name: true, slug: true, timezone: true, status: true, createdAt: true },
+    });
+    if (!tenant) throw forbidden("Empresa indisponível");
+    return tenant;
+  }
+
+  async updateProfile(context: TenantContext, input: { name: string; timezone: string }) {
+    const [tenant] = await prisma.$transaction([
+      prisma.tenant.update({
+        where: { id: context.tenantId },
+        data: input,
+        select: { id: true, name: true, slug: true, timezone: true, status: true, createdAt: true },
+      }),
+      prisma.auditLog.create({
+        data: {
+          tenantId: context.tenantId,
+          actorUserId: context.userId,
+          action: "tenant.profile_updated",
+          resourceType: "tenant",
+          resourceId: context.tenantId,
+          metadata: { name: input.name, timezone: input.timezone },
+        },
+      }),
+    ]);
+    return tenant;
+  }
+
   capabilities() {
     return {
       ai: { configured: Boolean(env.OPENAI_API_KEY) },

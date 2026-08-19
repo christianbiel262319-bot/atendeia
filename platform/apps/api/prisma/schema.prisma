@@ -143,6 +143,7 @@ model User {
   failedLogins    Int              @default(0)
   lockedUntil     DateTime?
   lastLoginAt     DateTime?
+  emailVerifiedAt DateTime?
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   isSuperAdmin    Boolean          @default(false)
@@ -151,6 +152,8 @@ model User {
   mfaSecrets      MfaSecret[]
   auditLogs       AuditLog[]       @relation("AuditActor")
   mediaAssets     MediaAsset[]     @relation("MediaCreator")
+  passwordResetTokens PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
 
   @@index([status])
 }
@@ -166,8 +169,10 @@ model Membership {
   updatedAt DateTime       @updatedAt
   tenant    Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignedConversations Conversation[] @relation("ConversationAssignee")
 
   @@unique([tenantId, userId])
+  @@unique([tenantId, id])
   @@index([tenantId, active])
   @@index([userId, active])
 }
@@ -198,6 +203,7 @@ model RefreshSession {
   csrfHash          String    @db.Char(64)
   ipHash            String?   @db.Char(64)
   userAgentHash     String?   @db.Char(64)
+  deviceLabel       String?   @db.VarChar(80)
   expiresAt         DateTime
   lastUsedAt        DateTime?
   revokedAt         DateTime?
@@ -209,6 +215,31 @@ model RefreshSession {
 
   @@index([tenantId, userId, familyId])
   @@index([expiresAt])
+}
+
+model PasswordResetToken {
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @db.Uuid
+  tokenHash   String    @unique @db.Char(64)
+  expiresAt   DateTime
+  consumedAt  DateTime?
+  requestedIpHash String? @db.Char(64)
+  createdAt   DateTime  @default(now())
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model EmailVerificationToken {
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @db.Uuid
+  tokenHash   String    @unique @db.Char(64)
+  expiresAt   DateTime
+  consumedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
 }
 
 model MfaSecret {
@@ -368,6 +399,7 @@ model Contact {
   conversations   Conversation[]
 
   @@unique([tenantId, whatsappUserId])
+  @@unique([tenantId, id])
   @@index([tenantId, createdAt])
 }
 
@@ -383,9 +415,11 @@ model Conversation {
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
   tenant               Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  contact              Contact            @relation(fields: [contactId], references: [id], onDelete: Restrict)
+  contact              Contact            @relation(fields: [tenantId, contactId], references: [tenantId, id], onDelete: Restrict)
+  assignee             Membership?        @relation("ConversationAssignee", fields: [tenantId, assignedMembershipId], references: [tenantId, id], onDelete: Restrict)
   messages             Message[]
 
+  @@unique([tenantId, id])
   @@index([tenantId, status, updatedAt])
   @@index([tenantId, contactId])
 }
@@ -407,7 +441,7 @@ model Message {
   createdAt           DateTime         @default(now())
   updatedAt           DateTime         @updatedAt
   tenant              Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  conversation        Conversation     @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  conversation        Conversation     @relation(fields: [tenantId, conversationId], references: [tenantId, id], onDelete: Cascade)
 
   @@unique([tenantId, externalMessageId])
   @@index([tenantId, conversationId, createdAt])
@@ -462,6 +496,7 @@ model Subscription {
   payments               Payment[]
 
   @@index([tenantId, status])
+  @@unique([tenantId, id])
   @@unique([provider, providerSubscriptionId])
 }
 
@@ -478,7 +513,7 @@ model Payment {
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
   tenant            Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  subscription      Subscription    @relation(fields: [subscriptionId], references: [id], onDelete: Restrict)
+  subscription      Subscription    @relation(fields: [tenantId, subscriptionId], references: [tenantId, id], onDelete: Restrict)
 
   @@unique([provider, providerPaymentId])
   @@index([tenantId, createdAt])

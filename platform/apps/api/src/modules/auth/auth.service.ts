@@ -3,7 +3,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { logger } from "../../config/logger.js";
 import type { MembershipRole } from "../../generated/prisma/enums.js";
 import { prisma } from "../../infra/database/prisma.js";
-import { conflict, forbidden, unauthorized } from "../../core/errors/app-error.js";
+import { AppError, conflict, forbidden, unauthorized } from "../../core/errors/app-error.js";
 import type { TenantContext } from "../../core/tenant/tenant-context.js";
 import {
   decryptSecret,
@@ -18,14 +18,15 @@ import {
   verifyMfaChallenge,
 } from "../../core/security/jwt.js";
 import { generateTotpSecret, totpUri, verifyTotp } from "../../core/security/totp.js";
-import type { LoginInput, RegisterInput } from "./auth.schemas.js";
+import type { InvitationRegisterInput, LoginInput, RegisterInput } from "./auth.schemas.js";
+import { AuthAccountService } from "./auth-account.service.js";
+import type { RequestFingerprint } from "./auth.types.js";
 
 const passwordCost = 12;
 const refreshLifetimeMs = 30 * 24 * 60 * 60 * 1_000;
 const lockThreshold = 10;
 const lockDurationMs = 15 * 60 * 1_000;
-
-type RequestFingerprint = { ip?: string; userAgent?: string };
+const accountService = new AuthAccountService();
 
 type IssuedSession = {
   accessToken: string;
@@ -41,7 +42,7 @@ export class AuthService {
       select: {
         role: true,
         mfaEnabled: true,
-        user: { select: { id: true, email: true, fullName: true, isSuperAdmin: true } },
+        user: { select: { id: true, email: true, fullName: true, isSuperAdmin: true, emailVerifiedAt: true } },
         tenant: { select: { id: true, name: true, slug: true, timezone: true } },
       },
     });
@@ -89,7 +90,112 @@ export class AuthService {
       result.role,
       fingerprint,
     );
-    return { ...result, session };
+    const verification = await accountService.deliverEmailVerification({
+      userId: result.user.id,
+      email: result.user.email,
+      fullName: result.user.fullName,
+    });
+    return { ...result, session, emailVerification: verification };
+  }
+
+  async inspectInvitation(token: string) {
+    const invitation = await prisma.teamInvitation.findUnique({
+      where: { tokenHash: sha256(token) },
+      select: {
+        email: true,
+        role: true,
+        expiresAt: true,
+        acceptedAt: true,
+        revokedAt: true,
+        tenant: { select: { name: true } },
+      },
+    });
+    if (!invitation || invitation.acceptedAt || invitation.revokedAt || invitation.expiresAt <= new Date()) {
+      throw new AppError(410, "INVITATION_INVALID", "Convite inválido ou expirado");
+    }
+    const existing = await prisma.user.findUnique({ where: { email: invitation.email }, select: { id: true } });
+    return {
+      tenantName: invitation.tenant.name,
+      role: invitation.role,
+      maskedEmail: maskEmail(invitation.email),
+      requiresAccountCreation: !existing,
+    };
+  }
+
+  async registerInvitation(input: InvitationRegisterInput, fingerprint: RequestFingerprint) {
+    const invitation = await prisma.teamInvitation.findUnique({
+      where: { tokenHash: sha256(input.token) },
+      include: { tenant: { select: { id: true, name: true, slug: true, status: true } } },
+    });
+    if (
+      !invitation ||
+      invitation.acceptedAt ||
+      invitation.revokedAt ||
+      invitation.expiresAt <= new Date() ||
+      invitation.tenant.status !== "ACTIVE"
+    ) {
+      throw new AppError(410, "INVITATION_INVALID", "Convite inválido ou expirado");
+    }
+    const existing = await prisma.user.findUnique({ where: { email: invitation.email }, select: { id: true } });
+    if (existing) throw conflict("Esta conta já existe. Entre para aceitar o convite");
+
+    const passwordHash = await bcrypt.hash(input.password, passwordCost);
+    const result = await prisma.$transaction(async (tx) => {
+      const claimed = await tx.teamInvitation.updateMany({
+        where: {
+          id: invitation.id,
+          acceptedAt: null,
+          revokedAt: null,
+          expiresAt: { gt: new Date() },
+        },
+        data: { acceptedAt: new Date() },
+      });
+      if (claimed.count !== 1) throw new AppError(410, "INVITATION_INVALID", "Convite inválido ou expirado");
+      const user = await tx.user.create({
+        data: {
+          email: invitation.email,
+          fullName: input.fullName,
+          passwordHash,
+          emailVerifiedAt: new Date(),
+        },
+        select: { id: true, email: true, fullName: true },
+      });
+      const membership = await tx.membership.create({
+        data: {
+          tenantId: invitation.tenantId,
+          userId: user.id,
+          role: invitation.role,
+        },
+        select: { role: true },
+      });
+      await tx.auditLog.create({
+        data: {
+          tenantId: invitation.tenantId,
+          actorUserId: user.id,
+          action: "auth.invitation_registered",
+          resourceType: "membership",
+          resourceId: user.id,
+          ipHash: fingerprint.ip ? keyedHash(fingerprint.ip) : null,
+          userAgentHash: fingerprint.userAgent ? keyedHash(fingerprint.userAgent) : null,
+        },
+      });
+      return { user, role: membership.role };
+    });
+    const session = await this.issueSession(
+      result.user.id,
+      invitation.tenantId,
+      result.role,
+      fingerprint,
+    );
+    return {
+      ...result,
+      tenant: {
+        id: invitation.tenant.id,
+        name: invitation.tenant.name,
+        slug: invitation.tenant.slug,
+      },
+      session,
+    };
   }
 
   async login(input: LoginInput, fingerprint: RequestFingerprint) {
@@ -160,7 +266,7 @@ export class AuthService {
 
     await prisma.user.update({
       where: { id: user.id },
-      data: { failedLogins: 0, lockedUntil: null },
+      data: { failedLogins: 0, lockedUntil: null, lastLoginAt: new Date() },
     });
 
     if (membership.mfaEnabled) {
@@ -269,6 +375,7 @@ export class AuthService {
           csrfHash: sha256(nextCsrfToken),
           ipHash: fingerprint.ip ? keyedHash(fingerprint.ip) : null,
           userAgentHash: fingerprint.userAgent ? keyedHash(fingerprint.userAgent) : null,
+          deviceLabel: describeDevice(fingerprint.userAgent),
           expiresAt,
         },
       });
@@ -380,18 +487,22 @@ export class AuthService {
     const csrfToken = secureToken(32);
     const expiresAt = new Date(Date.now() + refreshLifetimeMs);
 
-    await prisma.refreshSession.create({
-      data: {
-        tenantId,
-        userId,
-        familyId: randomUUID(),
-        tokenHash: sha256(refreshToken),
-        csrfHash: sha256(csrfToken),
-        ipHash: fingerprint.ip ? keyedHash(fingerprint.ip) : null,
-        userAgentHash: fingerprint.userAgent ? keyedHash(fingerprint.userAgent) : null,
-        expiresAt,
-      },
-    });
+    await prisma.$transaction([
+      prisma.refreshSession.create({
+        data: {
+          tenantId,
+          userId,
+          familyId: randomUUID(),
+          tokenHash: sha256(refreshToken),
+          csrfHash: sha256(csrfToken),
+          ipHash: fingerprint.ip ? keyedHash(fingerprint.ip) : null,
+          userAgentHash: fingerprint.userAgent ? keyedHash(fingerprint.userAgent) : null,
+          deviceLabel: describeDevice(fingerprint.userAgent),
+          expiresAt,
+        },
+      }),
+      prisma.user.update({ where: { id: userId }, data: { lastLoginAt: new Date() } }),
+    ]);
 
     return {
       accessToken: signAccessToken({ sub: userId, tenantId, role }),
@@ -458,4 +569,35 @@ function slugify(value: string): string {
       .replace(/^-|-$/gu, "")
       .slice(0, 60) || "empresa"
   );
+}
+
+export function describeDevice(userAgent?: string): string | null {
+  if (!userAgent) return null;
+  const browser = /Edg\//u.test(userAgent)
+    ? "Edge"
+    : /Firefox\//u.test(userAgent)
+      ? "Firefox"
+      : /Chrome\//u.test(userAgent)
+        ? "Chrome"
+        : /Safari\//u.test(userAgent)
+          ? "Safari"
+          : "Navegador";
+  const platform = /Android/u.test(userAgent)
+    ? "Android"
+    : /iPhone|iPad/u.test(userAgent)
+      ? "iOS"
+      : /Windows/u.test(userAgent)
+        ? "Windows"
+        : /Macintosh/u.test(userAgent)
+          ? "macOS"
+          : /Linux/u.test(userAgent)
+            ? "Linux"
+            : "dispositivo desconhecido";
+  return `${browser} em ${platform}`;
+}
+
+export function maskEmail(email: string): string {
+  const [local = "", domain = ""] = email.split("@");
+  const visible = local.slice(0, Math.min(2, local.length));
+  return `${visible}${"*".repeat(Math.max(3, local.length - visible.length))}@${domain}`;
 }

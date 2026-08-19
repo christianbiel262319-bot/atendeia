@@ -9,6 +9,9 @@
 - Zod na fronteira HTTP;
 - Prisma com consultas parametrizadas;
 - contexto multi-tenant validado no servidor;
+- chaves estrangeiras compostas impedindo contato/conversa/mensagem, atribuição e pagamento cruzados entre tenants;
+- tokens de redefinição e verificação de uso único, persistidos apenas como hash e com expiração;
+- gerenciamento e revogação seletiva de sessões;
 - logs estruturados sem dados sensíveis e trilha de auditoria;
 - assinatura HMAC do webhook Meta sobre o corpo bruto;
 - assinaturas/tokens de webhooks financeiros, janela antirreplay e deduplicação;

@@ -2,7 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowRight, Building2, KeyRound } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { Link, Navigate, useNavigate } from "react-router-dom";
+import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { z } from "zod";
 import { useAuth } from "@/auth/auth-provider";
 import { AuthShell } from "@/auth/auth-shell";
@@ -24,20 +24,22 @@ type Stage =
 export function LoginPage() {
   const { profile, signIn, verifyMfa } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const invitationToken = searchParams.get("convite");
   const [stage, setStage] = useState<Stage>({ type: "credentials" });
   const [mfaCode, setMfaCode] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const form = useForm<FormValues>({ resolver: zodResolver(schema) });
 
-  if (profile) return <Navigate to="/" replace />;
+  if (profile) return <Navigate to={afterLoginPath(invitationToken)} replace />;
 
   async function handleCredentials(values: FormValues): Promise<void> {
     setSubmitting(true);
     setServerError(null);
     try {
       const result = await signIn(values);
-      if (result.type === "done") void navigate("/", { replace: true });
+      if (result.type === "done") void navigate(afterLoginPath(invitationToken), { replace: true });
       if (result.type === "mfa") setStage(result);
       if (result.type === "tenant") setStage({ ...result, values });
     } catch (error) {
@@ -53,7 +55,7 @@ export function LoginPage() {
     setServerError(null);
     try {
       const result = await signIn({ ...stage.values, tenantId });
-      if (result.type === "done") void navigate("/", { replace: true });
+      if (result.type === "done") void navigate(afterLoginPath(invitationToken), { replace: true });
       if (result.type === "mfa") setStage(result);
     } catch (error) {
       setServerError(error instanceof Error ? error.message : "Não foi possível abrir a empresa");
@@ -68,7 +70,7 @@ export function LoginPage() {
     setServerError(null);
     try {
       await verifyMfa({ challengeToken: stage.challengeToken, code: mfaCode });
-      void navigate("/", { replace: true });
+      void navigate(afterLoginPath(invitationToken), { replace: true });
     } catch (error) {
       setServerError(error instanceof Error ? error.message : "Código inválido");
     } finally {
@@ -86,6 +88,7 @@ export function LoginPage() {
           <Field label="Senha" error={form.formState.errors.password?.message}>
             <Input autoComplete="current-password" type="password" placeholder="Sua senha" {...form.register("password")} />
           </Field>
+          <Link className="-mt-2 justify-self-end text-xs font-semibold text-brand-800 hover:underline" to="/esqueci-senha">Esqueci minha senha</Link>
           {serverError ? <ErrorMessage>{serverError}</ErrorMessage> : null}
           <Button className="mt-1 w-full" type="submit" disabled={submitting}>
             {submitting ? "Entrando…" : "Entrar"} <ArrowRight size={17} />
@@ -139,4 +142,8 @@ export function LoginPage() {
 
 function ErrorMessage({ children }: { children: string }) {
   return <p role="alert" className="rounded-brand border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">{children}</p>;
+}
+
+function afterLoginPath(invitationToken: string | null): string {
+  return invitationToken ? `/convite?token=${encodeURIComponent(invitationToken)}` : "/";
 }

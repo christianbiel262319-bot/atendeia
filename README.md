@@ -71,3 +71,4 @@ Não há seed de clientes, planos ou métricas fictícias.
 - [Deploy](platform/docs/deployment.md)
 - [Auditoria V2 — Fase 1](platform/docs/audit-v2-phase-1.md)
 - [Design System V2](platform/docs/design-system-v2.md)
+- [Fase 3 — autenticação, tenant e empresa](platform/docs/phase-3-auth-tenant.md)

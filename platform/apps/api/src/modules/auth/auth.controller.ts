@@ -2,14 +2,25 @@ import type { CookieOptions, Request, Response } from "express";
 import { env } from "../../config/env.js";
 import { assertCsrf } from "../../core/security/csrf.js";
 import { AuthService } from "./auth.service.js";
+import { AuthAccountService } from "./auth-account.service.js";
 import {
+  changePasswordSchema,
+  disableMfaSchema,
+  forgotPasswordSchema,
+  invitationRegisterSchema,
+  invitationTokenSchema,
   loginSchema,
   mfaConfirmSchema,
   mfaLoginSchema,
+  profileUpdateSchema,
   registerSchema,
+  resetPasswordSchema,
+  sessionIdSchema,
+  verificationTokenSchema,
 } from "./auth.schemas.js";
 
 const service = new AuthService();
+const accountService = new AuthAccountService();
 const refreshCookie = "atendeia.refresh";
 const csrfCookie = "atendeia.csrf";
 
@@ -20,6 +31,10 @@ const sharedCookieOptions: CookieOptions = {
 };
 
 export class AuthController {
+  capabilities(_request: Request, response: Response): void {
+    response.json({ data: accountService.capabilities() });
+  }
+
   async me(request: Request, response: Response): Promise<void> {
     const profile = await service.me(request.tenant!);
     response.json({ data: profile });
@@ -34,9 +49,24 @@ export class AuthController {
         user: result.user,
         tenant: result.tenant,
         role: result.role,
+        emailVerification: result.emailVerification,
         session: publicSession,
       },
     });
+  }
+
+  async inspectInvitation(request: Request, response: Response): Promise<void> {
+    const { token } = invitationTokenSchema.parse(request.body);
+    response.json({ data: await service.inspectInvitation(token) });
+  }
+
+  async registerInvitation(request: Request, response: Response): Promise<void> {
+    const result = await service.registerInvitation(
+      invitationRegisterSchema.parse(request.body),
+      fingerprint(request),
+    );
+    const publicSession = setSessionCookies(response, result.session);
+    response.status(201).json({ data: { ...result, session: publicSession } });
   }
 
   async login(request: Request, response: Response): Promise<void> {
@@ -91,14 +121,92 @@ export class AuthController {
     response.status(204).send();
   }
 
+  async forgotPassword(request: Request, response: Response): Promise<void> {
+    const { email } = forgotPasswordSchema.parse(request.body);
+    const result = await accountService.requestPasswordReset(email, fingerprint(request));
+    response.status(202).json({ data: result });
+  }
+
+  async resetPassword(request: Request, response: Response): Promise<void> {
+    const input = resetPasswordSchema.parse(request.body);
+    await accountService.resetPassword(input.token, input.password, fingerprint(request));
+    clearSessionCookies(response);
+    response.status(204).send();
+  }
+
+  async requestEmailVerification(request: Request, response: Response): Promise<void> {
+    assertCsrf(request);
+    response.json({ data: await accountService.requestEmailVerification(request.tenant!) });
+  }
+
+  async confirmEmail(request: Request, response: Response): Promise<void> {
+    const { token } = verificationTokenSchema.parse(request.body);
+    await accountService.confirmEmail(token);
+    response.status(204).send();
+  }
+
+  async updateProfile(request: Request, response: Response): Promise<void> {
+    assertCsrf(request);
+    const { fullName } = profileUpdateSchema.parse(request.body);
+    response.json({ data: await accountService.updateProfile(request.tenant!, fullName) });
+  }
+
+  async changePassword(request: Request, response: Response): Promise<void> {
+    assertCsrf(request);
+    await accountService.changePassword(
+      request.tenant!,
+      changePasswordSchema.parse(request.body),
+      request.cookies?.[refreshCookie] as string | undefined,
+    );
+    response.status(204).send();
+  }
+
+  async listSessions(request: Request, response: Response): Promise<void> {
+    response.json({
+      data: await accountService.listSessions(
+        request.tenant!,
+        request.cookies?.[refreshCookie] as string | undefined,
+      ),
+    });
+  }
+
+  async revokeOtherSessions(request: Request, response: Response): Promise<void> {
+    assertCsrf(request);
+    response.json({
+      data: await accountService.revokeOtherSessions(
+        request.tenant!,
+        request.cookies?.[refreshCookie] as string | undefined,
+      ),
+    });
+  }
+
+  async revokeSession(request: Request, response: Response): Promise<void> {
+    assertCsrf(request);
+    const result = await accountService.revokeSession(
+      request.tenant!,
+      sessionIdSchema.parse(request.params.id),
+      request.cookies?.[refreshCookie] as string | undefined,
+    );
+    if (result.current) clearSessionCookies(response);
+    response.json({ data: result });
+  }
+
   async beginMfaSetup(request: Request, response: Response): Promise<void> {
+    assertCsrf(request);
     const setup = await service.beginMfaSetup(request.tenant!);
     response.json({ data: setup });
   }
 
   async confirmMfa(request: Request, response: Response): Promise<void> {
+    assertCsrf(request);
     const { code } = mfaConfirmSchema.parse(request.body);
     await service.confirmMfa(request.tenant!, code);
+    response.status(204).send();
+  }
+
+  async disableMfa(request: Request, response: Response): Promise<void> {
+    assertCsrf(request);
+    await accountService.disableMfa(request.tenant!, disableMfaSchema.parse(request.body));
     response.status(204).send();
   }
 }

@@ -10,7 +10,7 @@ import {
 import { apiRequest, decodeAccessToken, restoreApiSession, setApiSession } from "@/lib/api";
 
 type Profile = {
-  user: { id: string; email: string; fullName: string; isSuperAdmin: boolean };
+  user: { id: string; email: string; fullName: string; isSuperAdmin: boolean; emailVerifiedAt: string | null };
   tenant: { id: string; name: string; slug: string; timezone: string };
   role: string;
   mfaEnabled: boolean;
@@ -32,6 +32,7 @@ type AuthContextValue = {
     email: string;
     password: string;
   }) => Promise<void>;
+  registerInvitation: (input: { token: string; fullName: string; password: string }) => Promise<void>;
   reloadProfile: () => Promise<void>;
   signOut: () => Promise<void>;
 };
@@ -116,6 +117,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [activateSession],
   );
 
+  const registerInvitation = useCallback(
+    async (input: { token: string; fullName: string; password: string }) => {
+      const response = await apiRequest<SessionResponse>("/v1/auth/invitations/register", {
+        method: "POST",
+        body: JSON.stringify(input),
+      });
+      await activateSession(response.data.session.accessToken);
+    },
+    [activateSession],
+  );
+
   const signOut = useCallback(async () => {
     try {
       await apiRequest<void>("/v1/auth/logout", {
@@ -135,8 +147,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ profile, booting, signIn, verifyMfa, registerAccount, reloadProfile, signOut }),
-    [profile, booting, signIn, verifyMfa, registerAccount, reloadProfile, signOut],
+    () => ({ profile, booting, signIn, verifyMfa, registerAccount, registerInvitation, reloadProfile, signOut }),
+    [profile, booting, signIn, verifyMfa, registerAccount, registerInvitation, reloadProfile, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

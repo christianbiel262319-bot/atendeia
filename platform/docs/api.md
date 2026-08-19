@@ -9,8 +9,8 @@ com Zod. Respostas seguem `{ data: ... }`; erros seguem
 
 | Módulo | Rotas |
 | --- | --- |
-| Auth | `/v1/auth/register`, `/login`, `/refresh`, `/logout`, `/mfa/*`, `/me` |
-| Tenant | `/v1/tenant/onboarding`, `/v1/tenant/capabilities` |
+| Auth | `/v1/auth/register`, `/login`, `/refresh`, `/logout`, `/password/*`, `/email/*`, `/sessions/*`, `/mfa/*`, `/invitations/*`, `/me` |
+| Tenant | `/v1/tenant/profile`, `/v1/tenant/onboarding`, `/v1/tenant/capabilities` |
 | WhatsApp | `/v1/whatsapp/connection`, `/v1/webhooks/whatsapp` |
 | Conhecimento | `/v1/knowledge/*` |
 | IA | `/v1/ai/configuration` |
@@ -26,3 +26,7 @@ para validar a assinatura contra os bytes originais do corpo.
 
 `GET /v1/tenant/capabilities` expõe somente flags booleanas de disponibilidade
 de provedores. Chaves e segredos nunca fazem parte da resposta.
+
+`GET /v1/auth/capabilities` expõe a disponibilidade global do envio de e-mail.
+`POST /v1/auth/password/forgot` sempre responde de forma genérica e nunca
+confirma se um endereço está cadastrado.

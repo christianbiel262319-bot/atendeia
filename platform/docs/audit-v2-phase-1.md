@@ -103,11 +103,11 @@ No frontend canônico:
 | Prioridade | Risco | Tratamento planejado |
 |---|---|---|
 | Resolvida na Fase 2 | Frontend publicado não era o frontend canônico | A entrega visual foi unificada; ainda é necessário hospedar API Express/PostgreSQL/Redis. |
-| Crítica | Ausência de teste real Empresa A × Empresa B | Criar suíte de integração com PostgreSQL isolado antes de marcar multi-tenancy como validada. |
-| Alta | Relações de banco podem referenciar IDs de outro tenant | Adicionar chaves/uniques compostas e migration segura. |
-| Alta | Convite não cadastra novo usuário sem criar empresa própria | Criar fluxo público de aceite/cadastro vinculado ao convite. |
+| Mitigada na Fase 3 | Ausência de teste Empresa A × Empresa B | A suíte agora executa migrations em PostgreSQL embutido e testa relações cruzadas; falta repetir no serviço gerenciado de produção. |
+| Resolvida na Fase 3 | Relações de banco podiam referenciar IDs de outro tenant | Chaves/uniques compostas e migration com verificação preventiva foram adicionadas. |
+| Resolvida na Fase 3 | Convite não cadastrava novo usuário sem criar empresa própria | O fluxo público agora cria a conta diretamente no tenant convidante. |
 | Alta | Envio outbound é síncrono e a fila outbound não é consumida | Implementar worker, idempotência de envio e retry controlado. |
-| Alta | Recuperação de senha, e-mail e sessões ausentes | Completar na Fase 3. |
+| Mitigada na Fase 3 | Recuperação de senha, e-mail e sessões ausentes | Fluxos e UI foram implementados; entrega real depende da configuração do provedor de e-mail. |
 | Média | Busca lexical da IA é limitada | Evoluir recuperação e criar simulador/evals na Fase 5. |
 | Média | Consultas usam limite sem cursor em vários módulos | Padronizar paginação por cursor. |
 | Média | Testes de frontend e E2E praticamente ausentes | Adicionar por fluxo nas fases correspondentes. |
