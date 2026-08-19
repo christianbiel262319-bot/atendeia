@@ -8,6 +8,12 @@ import type { z } from "zod";
 import type { registerMediaSchema } from "./media.schemas.js";
 
 export class MediaService {
+  capabilities() {
+    return {
+      cloudinaryConfigured: Boolean(env.CLOUDINARY_CLOUD_NAME && env.CLOUDINARY_API_KEY && env.CLOUDINARY_API_SECRET),
+    };
+  }
+
   signature(context: TenantContext) {
     const config = cloudinaryConfig();
     const timestamp = Math.floor(Date.now() / 1_000);
@@ -83,8 +89,12 @@ export class MediaService {
     const config = cloudinaryConfig();
     const asset = await prisma.mediaAsset.findFirst({
       where: { id, tenantId: context.tenantId },
+      include: { _count: { select: { productImages: true } } },
     });
     if (!asset) throw new AppError(404, "NOT_FOUND", "Mídia não encontrada");
+    if (asset._count.productImages > 0) {
+      throw new AppError(409, "MEDIA_IN_USE", "Remova a imagem dos produtos antes de excluí-la");
+    }
     const timestamp = Math.floor(Date.now() / 1_000);
     const body = new URLSearchParams({
       public_id: asset.publicId,

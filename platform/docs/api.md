@@ -30,3 +30,12 @@ de provedores. Chaves e segredos nunca fazem parte da resposta.
 `GET /v1/auth/capabilities` expõe a disponibilidade global do envio de e-mail.
 `POST /v1/auth/password/forgot` sempre responde de forma genérica e nunca
 confirma se um endereço está cadastrado.
+
+Listagens de contatos, produtos, serviços e FAQs usam `limit` e `cursor`.
+Contatos aceitam ainda `search`, `tag`, `source` e `archived`; conhecimento
+aceita `search`, `category` e `status`. O cursor é opaco para a autorização: o
+servidor continua aplicando o `tenantId` da sessão em toda página.
+
+`GET /v1/media/capabilities` retorna apenas se o Cloudinary está configurado.
+O upload usa `GET /v1/media/upload-signature` e registra o retorno validado em
+`POST /v1/media`; o segredo do provedor permanece exclusivamente no servidor.

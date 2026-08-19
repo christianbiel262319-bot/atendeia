@@ -8,6 +8,7 @@ export const mediaRouter = Router();
 
 mediaRouter.use(asyncHandler(requireTenant));
 mediaRouter.get("/", asyncHandler(controller.list.bind(controller)));
+mediaRouter.get("/capabilities", controller.capabilities.bind(controller));
 mediaRouter.use(requireRoles("OWNER", "ADMIN", "MANAGER"));
 mediaRouter.get("/upload-signature", controller.signature.bind(controller));
 mediaRouter.post("/", asyncHandler(controller.register.bind(controller)));

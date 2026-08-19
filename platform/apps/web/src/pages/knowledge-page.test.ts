@@ -13,4 +13,8 @@ describe("atalhos da base de conhecimento", () => {
   it("ignora uma seção inválida", () => {
     expect(tabFromSearch(new URLSearchParams({ secao: "inexistente" }))).toBe("products");
   });
+
+  it.each(["company", "hours"])("abre a seção persistida %s", (section) => {
+    expect(tabFromSearch(new URLSearchParams({ secao: section }))).toBe(section);
+  });
 });

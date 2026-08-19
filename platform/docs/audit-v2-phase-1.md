@@ -66,6 +66,11 @@ Classificações usadas:
 > PostgreSQL, Redis e worker continua pendente e, portanto, o deploy completo
 > permanece classificado como não implementado.
 
+> Atualização da Fase 4: CRM e base de conhecimento agora possuem CRUD real,
+> paginação, notas, histórico, arquivamento, perfil da empresa, categorias,
+> disponibilidade, exceções de horário e imagens assinadas. As relações novas
+> também são protegidas por chaves compostas de tenant no PostgreSQL.
+
 ## Mocks e controles auditados
 
 Antes da unificação, o frontend publicado continha navegação, busca, notificações, configuração,

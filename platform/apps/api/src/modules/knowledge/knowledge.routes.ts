@@ -8,6 +8,9 @@ export const knowledgeRouter = Router();
 
 knowledgeRouter.use(asyncHandler(requireTenant));
 knowledgeRouter.get("/", asyncHandler(controller.list.bind(controller)));
+knowledgeRouter.get("/products", asyncHandler(controller.listProducts.bind(controller)));
+knowledgeRouter.get("/services", asyncHandler(controller.listServices.bind(controller)));
+knowledgeRouter.get("/faqs", asyncHandler(controller.listFaqs.bind(controller)));
 knowledgeRouter.use(requireRoles("OWNER", "ADMIN", "MANAGER"));
 knowledgeRouter.post("/products", asyncHandler(controller.createProduct.bind(controller)));
 knowledgeRouter.patch("/products/:id", asyncHandler(controller.updateProduct.bind(controller)));
@@ -16,4 +19,7 @@ knowledgeRouter.patch("/services/:id", asyncHandler(controller.updateService.bin
 knowledgeRouter.post("/faqs", asyncHandler(controller.createFaq.bind(controller)));
 knowledgeRouter.patch("/faqs/:id", asyncHandler(controller.updateFaq.bind(controller)));
 knowledgeRouter.put("/business-hours", asyncHandler(controller.upsertHour.bind(controller)));
+knowledgeRouter.put("/business-hours/exceptions", asyncHandler(controller.upsertHourException.bind(controller)));
+knowledgeRouter.delete("/business-hours/exceptions/:id", asyncHandler(controller.removeHourException.bind(controller)));
+knowledgeRouter.put("/company-profile", asyncHandler(controller.updateCompanyProfile.bind(controller)));
 knowledgeRouter.delete("/:resource/:id", asyncHandler(controller.remove.bind(controller)));

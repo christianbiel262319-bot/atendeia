@@ -9,13 +9,13 @@
 - Zod na fronteira HTTP;
 - Prisma com consultas parametrizadas;
 - contexto multi-tenant validado no servidor;
-- chaves estrangeiras compostas impedindo contato/conversa/mensagem, atribuição e pagamento cruzados entre tenants;
+- chaves estrangeiras compostas impedindo contato/conversa/mensagem, notas/autores, imagens de produto, atribuição e pagamento cruzados entre tenants;
 - tokens de redefinição e verificação de uso único, persistidos apenas como hash e com expiração;
 - gerenciamento e revogação seletiva de sessões;
 - logs estruturados sem dados sensíveis e trilha de auditoria;
 - assinatura HMAC do webhook Meta sobre o corpo bruto;
 - assinaturas/tokens de webhooks financeiros, janela antirreplay e deduplicação;
-- uploads Cloudinary assinados e restritos à pasta do tenant;
+- uploads Cloudinary assinados, restritos à pasta do tenant e vinculados a produtos somente por chave composta da mesma empresa;
 - tokens de acesso mantidos apenas em memória no navegador e renovação serializada;
 - WebSocket autenticado, validado novamente contra associação e status do tenant;
 - erros conhecidos do banco convertidos sem expor consultas ou detalhes internos.

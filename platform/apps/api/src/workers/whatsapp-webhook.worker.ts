@@ -93,16 +93,22 @@ async function processInboundMessage(
   if (!message) return;
 
   const contactProfile = payload.contacts?.find((contact) => contact.wa_id === message.from);
+  const receivedAt = new Date();
   const contact = await prisma.contact.upsert({
     where: { tenantId_whatsappUserId: { tenantId, whatsappUserId: message.from } },
     create: {
       tenantId,
       whatsappUserId: message.from,
-      phoneE164: message.from,
+      phoneE164: `+${message.from}`,
       displayName: contactProfile?.profile?.name ?? null,
+      source: "WHATSAPP",
+      lastInteractionAt: receivedAt,
     },
     update: {
-      phoneE164: message.from,
+      phoneE164: `+${message.from}`,
+      source: "WHATSAPP",
+      lastInteractionAt: receivedAt,
+      archivedAt: null,
       ...(contactProfile?.profile?.name ? { displayName: contactProfile.profile.name } : {}),
     },
   });

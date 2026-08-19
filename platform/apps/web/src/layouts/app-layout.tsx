@@ -225,7 +225,7 @@ function SidebarTooltip({ label }: { label: string }) {
 function QuickCreateMenu({ role }: { role: string }) {
   const [open, setOpen] = useState(false);
   const container = useRef<HTMLDivElement>(null);
-  const { canCreateKnowledge, canInvite } = quickCreatePermissions(role);
+  const { canCreateContact, canCreateKnowledge, canInvite } = quickCreatePermissions(role);
 
   useEffect(() => {
     function closeOnOutside(event: MouseEvent): void {
@@ -242,7 +242,7 @@ function QuickCreateMenu({ role }: { role: string }) {
     };
   }, []);
 
-  if (!canCreateKnowledge && !canInvite) return null;
+  if (!canCreateContact && !canCreateKnowledge && !canInvite) return null;
 
   return (
     <div className="relative" ref={container}>
@@ -252,6 +252,7 @@ function QuickCreateMenu({ role }: { role: string }) {
       {open ? (
         <div className="absolute right-0 top-[calc(100%+10px)] z-50 w-64 overflow-hidden rounded-[15px] border border-app-line bg-white p-2 shadow-popover" role="menu" aria-label="Criação rápida">
           <div className="px-3 pb-2 pt-1"><span className="text-[9px] font-bold tracking-[0.14em] text-slate-400">CRIAÇÃO RÁPIDA</span><p className="mt-1 text-[11px] text-slate-500">Somente ações permitidas para seu perfil.</p></div>
+          {canCreateContact ? <QuickLink to="/contatos?novo=contato" label="Novo contato" icon={UserRound} onNavigate={() => setOpen(false)} /> : null}
           {canCreateKnowledge ? <>
             <QuickLink to="/conhecimento?novo=produto" label="Novo produto" icon={Package} onNavigate={() => setOpen(false)} />
             <QuickLink to="/conhecimento?novo=servico" label="Novo serviço" icon={Wrench} onNavigate={() => setOpen(false)} />
@@ -264,8 +265,9 @@ function QuickCreateMenu({ role }: { role: string }) {
   );
 }
 
-export function quickCreatePermissions(role: string): { canCreateKnowledge: boolean; canInvite: boolean } {
+export function quickCreatePermissions(role: string): { canCreateContact: boolean; canCreateKnowledge: boolean; canInvite: boolean } {
   return {
+    canCreateContact: ["OWNER", "ADMIN", "MANAGER", "AGENT"].includes(role),
     canCreateKnowledge: ["OWNER", "ADMIN", "MANAGER"].includes(role),
     canInvite: role === "OWNER" || role === "ADMIN",
   };

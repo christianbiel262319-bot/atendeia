@@ -1,5 +1,23 @@
 # Módulo Base de Conhecimento
 
-Produtos, serviços, FAQs e horários pertencem ao tenant e só entram no contexto da IA quando estão ativos. A busca retorna um conjunto pequeno e relevante; o prompt não recebe registros de outras empresas nem o banco completo.
+Produtos, serviços, FAQs, informações da empresa, horários semanais e exceções
+pertencem ao tenant. Somente itens `ACTIVE` entram na recuperação da IA;
+rascunhos e arquivados permanecem fora do contexto.
 
-Escritas exigem papel `OWNER`, `ADMIN` ou `MANAGER`. Atualizações e exclusões combinam sempre `id + tenantId`, impedindo acesso por enumeração de UUID.
+## Capacidades
+
+- produtos, serviços e FAQs paginados por cursor, com pesquisa e status;
+- categoria, preço, duração, disponibilidade e ordenação quando aplicável;
+- perfil oficial com descrição, endereço, contatos, políticas e links HTTP(S);
+- horários por dia e exceções por data;
+- imagem de produto vinculada a um `MediaAsset` do mesmo tenant;
+- CRUD auditado e interface com estados de loading, erro, sucesso e vazio.
+
+A recuperação lexical consulta no máximo dez registros relevantes por tipo. O
+perfil da empresa só é incluído quando a pergunta corresponde a um campo
+realmente preenchido. Consultas sobre horários incluem a semana e as próximas
+exceções; nenhuma credencial ou item de outro tenant é enviado ao modelo.
+
+Escritas exigem papel `OWNER`, `ADMIN` ou `MANAGER`. Atualizações e exclusões
+combinam sempre `id + tenantId`. A imagem possui chave estrangeira composta
+contra `MediaAsset(tenantId, id)`, impedindo vínculo cruzado no banco.

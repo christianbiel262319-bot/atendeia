@@ -69,6 +69,13 @@ enum KnowledgeStatus {
   ARCHIVED
 }
 
+enum ContactSource {
+  WHATSAPP
+  MANUAL
+  IMPORT
+  API
+}
+
 enum SecretType {
   WHATSAPP_ACCESS_TOKEN
   WHATSAPP_VERIFY_TOKEN
@@ -120,8 +127,11 @@ model Tenant {
   services              Service[]
   faqs                  Faq[]
   businessHours         BusinessHour[]
+  businessHourExceptions BusinessHourException[]
+  companyProfile        CompanyProfile?
   aiConfiguration       AiConfiguration?
   contacts              Contact[]
+  contactNotes          ContactNote[]
   conversations         Conversation[]
   messages              Message[]
   webhookEvents         WebhookEvent[]
@@ -170,6 +180,7 @@ model Membership {
   tenant    Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   assignedConversations Conversation[] @relation("ConversationAssignee")
+  contactNotes          ContactNote[]   @relation("ContactNoteAuthor")
 
   @@unique([tenantId, userId])
   @@unique([tenantId, id])
@@ -310,16 +321,20 @@ model WhatsAppConnection {
 }
 
 model Product {
-  id          String          @id @default(uuid()) @db.Uuid
-  tenantId    String          @db.Uuid
-  name        String          @db.VarChar(160)
-  description String          @db.Text
-  price       Decimal?        @db.Decimal(14, 2)
-  currency    String          @default("BRL") @db.Char(3)
-  status      KnowledgeStatus @default(DRAFT)
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-  tenant      Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id           String          @id @default(uuid()) @db.Uuid
+  tenantId     String          @db.Uuid
+  name         String          @db.VarChar(160)
+  description  String          @db.Text
+  category     String?         @db.VarChar(80)
+  price        Decimal?        @db.Decimal(14, 2)
+  currency     String          @default("BRL") @db.Char(3)
+  available    Boolean         @default(true)
+  imageAssetId String?         @db.Uuid
+  status       KnowledgeStatus @default(DRAFT)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  tenant       Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  imageAsset   MediaAsset?     @relation("ProductImage", fields: [tenantId, imageAssetId], references: [tenantId, id], onDelete: Restrict)
 
   @@unique([tenantId, name])
   @@index([tenantId, status])
@@ -330,9 +345,11 @@ model Service {
   tenantId        String          @db.Uuid
   name            String          @db.VarChar(160)
   description     String          @db.Text
+  category        String?         @db.VarChar(80)
   durationMinutes Int?
   price           Decimal?        @db.Decimal(14, 2)
   currency        String          @default("BRL") @db.Char(3)
+  available       Boolean         @default(true)
   status          KnowledgeStatus @default(DRAFT)
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
@@ -347,6 +364,7 @@ model Faq {
   tenantId  String          @db.Uuid
   question  String          @db.Text
   answer    String          @db.Text
+  category  String?         @db.VarChar(80)
   status    KnowledgeStatus @default(DRAFT)
   sortOrder Int             @default(0)
   createdAt DateTime        @default(now())
@@ -371,6 +389,35 @@ model BusinessHour {
   @@index([tenantId])
 }
 
+model BusinessHourException {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @db.Uuid
+  date      DateTime @db.Date
+  label     String?  @db.VarChar(120)
+  opensAt   String?  @db.Char(5)
+  closesAt  String?  @db.Char(5)
+  isClosed  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, date])
+  @@index([tenantId, date])
+}
+
+model CompanyProfile {
+  tenantId    String   @id @db.Uuid
+  description String?  @db.Text
+  address     String?  @db.Text
+  phoneE164   String?  @db.VarChar(20)
+  email       String?  @db.VarChar(254)
+  policies    String?  @db.Text
+  usefulLinks Json     @default("[]")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
 model AiConfiguration {
   id                  String   @id @default(uuid()) @db.Uuid
   tenantId            String   @unique @db.Uuid
@@ -393,14 +440,34 @@ model Contact {
   displayName     String?        @db.VarChar(160)
   email           String?        @db.VarChar(254)
   tags            String[]       @default([])
+  source          ContactSource  @default(WHATSAPP)
+  lastInteractionAt DateTime?
+  archivedAt      DateTime?
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
   tenant          Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   conversations   Conversation[]
+  notes           ContactNote[]
 
   @@unique([tenantId, whatsappUserId])
   @@unique([tenantId, id])
-  @@index([tenantId, createdAt])
+  @@index([tenantId, archivedAt, updatedAt])
+  @@index([tenantId, lastInteractionAt])
+}
+
+model ContactNote {
+  id           String     @id @default(uuid()) @db.Uuid
+  tenantId     String     @db.Uuid
+  contactId    String     @db.Uuid
+  authorUserId String     @db.Uuid
+  body         String     @db.Text
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  tenant       Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contact      Contact    @relation(fields: [tenantId, contactId], references: [tenantId, id], onDelete: Cascade)
+  author       Membership @relation("ContactNoteAuthor", fields: [tenantId, authorUserId], references: [tenantId, userId], onDelete: Restrict)
+
+  @@index([tenantId, contactId, createdAt])
 }
 
 model Conversation {
@@ -552,7 +619,9 @@ model MediaAsset {
   updatedAt       DateTime @updatedAt
   tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   createdBy       User     @relation("MediaCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  productImages   Product[] @relation("ProductImage")
 
   @@unique([tenantId, publicId])
+  @@unique([tenantId, id])
   @@index([tenantId, createdAt])
 }

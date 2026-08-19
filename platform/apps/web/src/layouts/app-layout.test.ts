@@ -20,9 +20,9 @@ describe("navegação V2", () => {
   });
 
   it("limita a criação rápida pela função da sessão", () => {
-    expect(quickCreatePermissions("OWNER")).toEqual({ canCreateKnowledge: true, canInvite: true });
-    expect(quickCreatePermissions("ADMIN")).toEqual({ canCreateKnowledge: true, canInvite: true });
-    expect(quickCreatePermissions("AGENT")).toEqual({ canCreateKnowledge: false, canInvite: false });
-    expect(quickCreatePermissions("VIEWER")).toEqual({ canCreateKnowledge: false, canInvite: false });
+    expect(quickCreatePermissions("OWNER")).toEqual({ canCreateContact: true, canCreateKnowledge: true, canInvite: true });
+    expect(quickCreatePermissions("ADMIN")).toEqual({ canCreateContact: true, canCreateKnowledge: true, canInvite: true });
+    expect(quickCreatePermissions("AGENT")).toEqual({ canCreateContact: true, canCreateKnowledge: false, canInvite: false });
+    expect(quickCreatePermissions("VIEWER")).toEqual({ canCreateContact: false, canCreateKnowledge: false, canInvite: false });
   });
 });

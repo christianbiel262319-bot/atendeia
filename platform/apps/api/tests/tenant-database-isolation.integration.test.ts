@@ -7,6 +7,7 @@ const migrationPaths = [
   "../prisma/migrations/20260817010000_init/migration.sql",
   "../prisma/migrations/20260819090000_auth_lifecycle/migration.sql",
   "../prisma/migrations/20260819100000_tenant_relational_guards/migration.sql",
+  "../prisma/migrations/20260819110000_crm_knowledge_expansion/migration.sql",
 ];
 
 beforeAll(async () => {
@@ -27,6 +28,8 @@ beforeAll(async () => {
       ('30000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000001', 'whatsapp-a', NOW());
     INSERT INTO "Conversation" ("id", "tenantId", "contactId", "updatedAt") VALUES
       ('40000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000001', '30000000-0000-4000-8000-000000000001', NOW());
+    INSERT INTO "MediaAsset" ("id", "tenantId", "createdByUserId", "publicId", "secureUrl", "resourceType", "updatedAt") VALUES
+      ('60000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000001', 'atendeia/a/image', 'https://res.cloudinary.com/test/image/upload/image.png', 'image', NOW());
   `);
 });
 
@@ -54,6 +57,20 @@ describe("isolamento relacional no PostgreSQL", () => {
       UPDATE "Conversation"
       SET "assignedMembershipId" = '20000000-0000-4000-8000-000000000002'
       WHERE "id" = '40000000-0000-4000-8000-000000000001';
+    `)).rejects.toThrow();
+  });
+
+  it("impede a Empresa B de adicionar nota ao contato da Empresa A", async () => {
+    await expect(db.exec(`
+      INSERT INTO "ContactNote" ("id", "tenantId", "contactId", "authorUserId", "body", "updatedAt")
+      VALUES ('70000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000002', '30000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000002', 'nota cruzada', NOW());
+    `)).rejects.toThrow();
+  });
+
+  it("impede produto da Empresa B de usar imagem da Empresa A", async () => {
+    await expect(db.exec(`
+      INSERT INTO "Product" ("id", "tenantId", "name", "description", "imageAssetId", "updatedAt")
+      VALUES ('80000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000002', 'Produto B', 'Descrição', '60000000-0000-4000-8000-000000000001', NOW());
     `)).rejects.toThrow();
   });
 });

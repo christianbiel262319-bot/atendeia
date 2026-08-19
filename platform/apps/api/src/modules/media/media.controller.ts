@@ -5,6 +5,10 @@ import { MediaService } from "./media.service.js";
 const service = new MediaService();
 
 export class MediaController {
+  capabilities(_request: Request, response: Response): void {
+    response.json({ data: service.capabilities() });
+  }
+
   signature(request: Request, response: Response): void {
     response.json({ data: service.signature(request.tenant!) });
   }
