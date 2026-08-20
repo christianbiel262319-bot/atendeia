@@ -30,7 +30,7 @@ export function ResetPasswordPage() {
       {reset.isSuccess ? (
         <div className="grid gap-5"><SuccessNotice message="Senha alterada. Todas as sessões anteriores foram encerradas." /><Link className="text-center text-sm font-semibold text-brand-800 hover:underline" to="/entrar">Entrar com a nova senha</Link></div>
       ) : !token ? <ErrorNotice message="Este link não contém um token de redefinição." /> : (
-        <form className="grid gap-5" onSubmit={(event) => void form.handleSubmit((values) => reset.mutateAsync(values))(event)}>
+        <form className="grid gap-5" onSubmit={(event) => void form.handleSubmit((values) => reset.mutate(values))(event)}>
           <Field label="Nova senha" error={form.formState.errors.password?.message}><Input autoComplete="new-password" type="password" placeholder="Pelo menos 12 caracteres" {...form.register("password")} /></Field>
           <Field label="Confirme a nova senha" error={form.formState.errors.confirmation?.message}><Input autoComplete="new-password" type="password" placeholder="Repita a nova senha" {...form.register("confirmation")} /></Field>
           {reset.error ? <ErrorNotice message={reset.error.message} /> : null}

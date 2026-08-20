@@ -4,6 +4,7 @@ import { Bot, CheckCircle2, CircleAlert, KeyRound, MessageCircle, ShieldCheck } 
 import { useEffect } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
+import { useAuth } from "@/auth/auth-provider";
 import { ErrorNotice, Page, PageHeader, StatusPill } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -37,6 +38,7 @@ type Capabilities = {
 };
 
 export function AutomationPage() {
+  const { isDemoMode } = useAuth();
   const queryClient = useQueryClient();
   const capabilities = useQuery({
     queryKey: ["tenant-capabilities"],
@@ -116,7 +118,7 @@ export function AutomationPage() {
           </div>
           {capabilities.isLoading ? (
             <div className="mt-6 h-32 animate-pulse rounded-xl bg-slate-100" aria-label="Carregando configuração do WhatsApp" />
-          ) : !capabilities.data?.whatsapp.configured ? (
+          ) : !capabilities.data?.whatsapp.configured && !isDemoMode ? (
             <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
               <div className="flex items-center gap-2 font-semibold"><CircleAlert size={17} /> Configuração necessária</div>
               <p className="mt-1 text-xs">Defina o segredo do aplicativo e o token de verificação da Meta no servidor antes de conectar um número.</p>
@@ -127,7 +129,8 @@ export function AutomationPage() {
               <dl className="mt-3 grid gap-2 text-xs text-emerald-900/70 sm:grid-cols-2"><div><dt className="font-medium">Número</dt><dd className="mt-1">{connection.data.displayPhoneNumber ?? "Confirmado pela Meta"}</dd></div><div><dt className="font-medium">Phone Number ID</dt><dd className="mt-1 break-all">{connection.data.phoneNumberId}</dd></div></dl>
             </div>
           ) : (
-            <form className="mt-6 grid gap-4" onSubmit={(event) => void whatsappForm.handleSubmit((values) => connect.mutateAsync(values))(event)}>
+            <form className="mt-6 grid gap-4" onSubmit={(event) => void whatsappForm.handleSubmit((values) => connect.mutate(values))(event)}>
+              {isDemoMode ? <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs leading-5 text-amber-900"><strong>Formulário demonstrativo:</strong> os campos podem ser avaliados, mas nenhuma credencial será enviada ou armazenada. Disponível após conectar o ambiente de homologação.</div> : null}
               <Field label="Phone Number ID" error={whatsappForm.formState.errors.phoneNumberId?.message}><Input autoComplete="off" {...whatsappForm.register("phoneNumberId")} /></Field>
               <Field label="WhatsApp Business Account ID" error={whatsappForm.formState.errors.businessAccountId?.message}><Input autoComplete="off" {...whatsappForm.register("businessAccountId")} /></Field>
               <Field label="Token permanente da Meta" error={whatsappForm.formState.errors.accessToken?.message}><Input type="password" autoComplete="off" {...whatsappForm.register("accessToken")} /></Field>
@@ -141,8 +144,8 @@ export function AutomationPage() {
         <Card className="p-5 sm:p-6">
           <div className="flex items-start gap-3"><span className="grid size-10 place-items-center rounded-xl bg-violet-50 text-violet-700"><Bot size={20} /></span><div><h2 className="font-semibold">Contrato da IA</h2><p className="mt-1 text-xs leading-5 text-slate-500">Sem contexto suficiente, a conversa é transferida para uma pessoa.</p></div></div>
           {!capabilities.isLoading && !capabilities.data?.ai.configured ? <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900"><div className="flex items-center gap-2 font-semibold"><CircleAlert size={17} /> Configuração necessária</div><p className="mt-1 text-xs">A chave da OpenAI deve ser configurada no servidor. Você pode preparar as regras, mas não ativar respostas automáticas.</p></div> : null}
-          <form className="mt-6 grid gap-4" onSubmit={(event) => void aiForm.handleSubmit((values) => saveAi.mutateAsync(values))(event)}>
-            <label className="flex items-center justify-between rounded-xl border border-slate-200 p-4"><span><strong className="block text-sm">Ativar respostas automáticas</strong><span className="mt-1 block text-xs text-slate-500">Ative somente depois de cadastrar conhecimento.</span></span><input className="size-5 accent-emerald-700" type="checkbox" disabled={capabilities.isLoading || (!capabilities.data?.ai.configured && !aiEnabled)} {...aiForm.register("enabled")} /></label>
+          <form className="mt-6 grid gap-4" onSubmit={(event) => void aiForm.handleSubmit((values) => saveAi.mutate(values))(event)}>
+            <label className="flex items-center justify-between rounded-xl border border-slate-200 p-4"><span><strong className="block text-sm">Ativar respostas automáticas</strong><span className="mt-1 block text-xs text-slate-500">Ative somente depois de cadastrar conhecimento.</span></span><input className="size-5 accent-emerald-700" type="checkbox" disabled={capabilities.isLoading || (!isDemoMode && !capabilities.data?.ai.configured && !aiEnabled)} {...aiForm.register("enabled")} /></label>
             <Field label="Tom de voz" error={aiForm.formState.errors.tone?.message}><Input {...aiForm.register("tone")} /></Field>
             <div className="grid gap-4 sm:grid-cols-2"><Field label="Confiança mínima" error={aiForm.formState.errors.minimumConfidence?.message}><Input type="number" min="0.5" max="1" step="0.05" {...aiForm.register("minimumConfidence", { valueAsNumber: true })} /></Field><Field label="Mensagens de contexto" error={aiForm.formState.errors.maxContextMessages?.message}><Input type="number" min="1" max="50" {...aiForm.register("maxContextMessages", { valueAsNumber: true })} /></Field></div>
             <Field label="Mensagem sem contexto"><Textarea rows={3} placeholder="Opcional: mensagem segura de fallback" {...aiForm.register("fallbackMessage")} /></Field>

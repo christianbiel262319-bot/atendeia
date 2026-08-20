@@ -18,6 +18,10 @@ if [[ ! -x "${vinext}" ]]; then
   exit 69
 fi
 
+export ATENDEIA_DEPLOYMENT_STAGE="${ATENDEIA_DEPLOYMENT_STAGE:-production}"
+export VITE_ATENDEIA_STAGE="${VITE_ATENDEIA_STAGE:-${ATENDEIA_DEPLOYMENT_STAGE}}"
+node "${script_dir}/assert-preview-safety.mjs"
+
 echo "Running bounded vinext build..."
 timeout \
   --signal=TERM \

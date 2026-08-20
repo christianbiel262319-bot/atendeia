@@ -114,11 +114,12 @@ export function ConversationsPage() {
           <section className="flex min-h-[520px] flex-col">
             {detail.data ? <>
               <header className="flex min-h-16 flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-3"><div><strong className="block text-sm">{detail.data.contact.displayName ?? detail.data.contact.phoneE164 ?? "Cliente"}</strong><span className="mt-1 block text-xs text-slate-400">{detail.data.contact.phoneE164}</span></div><div className="flex items-center gap-2"><StatusPill value={detail.data.status} />{detail.data.status !== "RESOLVED" ? <Button variant="outline" size="sm" disabled={resolve.isPending} onClick={() => resolve.mutate()}><CheckCircle2 size={15} /> Resolver</Button> : null}</div></header>
+              {resolve.error ? <div className="border-b border-red-100 p-3"><ErrorNotice message={resolve.error.message} /></div> : null}
               {detail.data.needsHumanReason ? <div className="border-b border-amber-100 bg-amber-50 px-5 py-3 text-xs text-amber-800"><strong>Transferência:</strong> {detail.data.needsHumanReason}</div> : null}
               <div className="flex-1 space-y-3 overflow-y-auto bg-slate-50/60 p-4 sm:p-6">
                 {detail.data.messages.map((message) => <MessageBubble key={message.id} message={message} />)}
               </div>
-              <form className="border-t border-slate-100 bg-white p-4" onSubmit={(event) => void form.handleSubmit((values) => send.mutateAsync(values))(event)}><div className="flex items-end gap-3"><Textarea className="min-h-12 flex-1" rows={2} placeholder="Escreva uma resposta humana…" {...form.register("body")} /><Button type="submit" size="icon" aria-label="Enviar mensagem" disabled={send.isPending}><Send size={17} /></Button></div>{send.error ? <div className="mt-3"><ErrorNotice message={send.error.message} /></div> : null}</form>
+              <form className="border-t border-slate-100 bg-white p-4" onSubmit={(event) => void form.handleSubmit((values) => send.mutate(values))(event)}><div className="flex items-end gap-3"><Textarea className="min-h-12 flex-1" rows={2} placeholder="Escreva uma resposta humana…" {...form.register("body")} /><Button type="submit" size="icon" aria-label="Enviar mensagem" disabled={send.isPending}><Send size={17} /></Button></div>{send.error ? <div className="mt-3"><ErrorNotice message={send.error.message} /></div> : null}</form>
             </> : <div className="grid flex-1 place-items-center text-center text-slate-400"><div><MessageCircle className="mx-auto" size={32} /><p className="mt-3 text-sm">Selecione uma conversa</p></div></div>}
           </section>
         </div>

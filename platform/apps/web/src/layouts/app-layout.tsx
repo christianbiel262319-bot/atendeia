@@ -9,6 +9,7 @@ import {
   Inbox,
   LogOut,
   Menu,
+  MonitorPlay,
   Package,
   PanelLeftClose,
   PanelLeftOpen,
@@ -46,7 +47,7 @@ type DashboardSummary = { waitingHuman: number };
 const collapsedStorageKey = "atendeia.sidebar.collapsed";
 
 export function AppLayout() {
-  const { profile, signOut } = useAuth();
+  const { profile, isDemoMode, signOut } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(
     () => typeof window !== "undefined" && window.localStorage.getItem(collapsedStorageKey) === "true",
@@ -133,7 +134,7 @@ export function AppLayout() {
               <Link className={cn("grid size-8 shrink-0 place-items-center rounded-lg text-brand-100/45 transition hover:bg-white/10 hover:text-white", collapsed && "lg:hidden")} to="/configuracoes" aria-label="Configurações"><Settings size={15} /></Link>
             </div>
             <button className={cn("group relative mt-3 flex w-full items-center gap-2 border-t border-white/10 pt-3 text-xs text-brand-50/55 transition hover:text-white", collapsed && "lg:justify-center")} type="button" onClick={() => void signOut()}>
-              <LogOut size={15} /> <span className={cn(collapsed && "lg:hidden")}>Sair com segurança</span>
+              <LogOut size={15} /> <span className={cn(collapsed && "lg:hidden")}>{isDemoMode ? "Sair da demonstração" : "Sair com segurança"}</span>
               {collapsed ? <SidebarTooltip label="Sair" /> : null}
             </button>
           </div>
@@ -158,8 +159,12 @@ export function AppLayout() {
             <button className="grid size-10 shrink-0 place-items-center rounded-brand border border-app-line text-slate-600 transition hover:bg-slate-50 lg:hidden" type="button" onClick={() => setMobileOpen(true)} aria-label="Abrir menu"><Menu size={20} /></button>
             <div className="min-w-0"><span className="hidden text-[9px] font-bold tracking-[0.14em] text-slate-400 sm:block">EMPRESA ATIVA</span><strong className="block truncate text-sm text-slate-700 sm:mt-1">{profile?.tenant.name}</strong></div>
           </div>
-          <QuickCreateMenu role={profile?.role ?? "AGENT"} />
+          <div className="flex items-center gap-2 sm:gap-3">
+            {isDemoMode ? <span className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-2.5 text-[10px] font-bold tracking-wide text-amber-900" aria-label="Modo demonstração ativo"><MonitorPlay size={14} /><span className="hidden sm:inline">MODO DEMONSTRAÇÃO</span><span className="sm:hidden">DEMO</span></span> : null}
+            <QuickCreateMenu role={profile?.role ?? "AGENT"} />
+          </div>
         </header>
+        {isDemoMode ? <div className="border-b border-amber-200 bg-amber-50/90 px-4 py-2 text-center text-[11px] font-medium leading-5 text-amber-900 sm:px-7" role="status"><strong>Dados DEMO:</strong> nada nesta sessão representa clientes ou operações reais. Ações de servidor exibem “Disponível após conectar o ambiente de homologação”.</div> : null}
         <Outlet />
       </div>
 

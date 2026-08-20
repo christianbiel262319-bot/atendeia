@@ -51,7 +51,7 @@ export function AcceptInvitePage() {
             {accept.isSuccess ? <div className="mt-6 grid gap-4"><SuccessNotice message="A empresa foi vinculada à sua conta. Entre novamente para selecioná-la com uma nova sessão." /><Button onClick={() => void reenter()}>Sair e entrar na empresa</Button></div> : profile ? (
               <div className="mt-6 grid gap-4">{accept.error ? <ErrorNotice message={accept.error.message} /> : null}<Button disabled={accept.isPending} onClick={() => accept.mutate()}>{accept.isPending ? "Confirmando…" : "Aceitar convite com esta conta"}</Button><Link className="text-sm font-semibold text-slate-600 hover:underline" to="/">Voltar</Link></div>
             ) : invitation.data.requiresAccountCreation ? (
-              <form className="mt-6 grid gap-4 text-left" onSubmit={(event) => void form.handleSubmit((values) => register.mutateAsync(values))(event)}>
+              <form className="mt-6 grid gap-4 text-left" onSubmit={(event) => void form.handleSubmit((values) => register.mutate(values))(event)}>
                 <Field label="Seu nome" error={form.formState.errors.fullName?.message}><Input autoComplete="name" {...form.register("fullName")} /></Field>
                 <Field label="Crie uma senha" error={form.formState.errors.password?.message}><Input autoComplete="new-password" type="password" {...form.register("password")} /></Field>
                 <Field label="Confirme a senha" error={form.formState.errors.confirmation?.message}><Input autoComplete="new-password" type="password" {...form.register("confirmation")} /></Field>

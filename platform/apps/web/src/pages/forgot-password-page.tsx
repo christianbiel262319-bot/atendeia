@@ -41,7 +41,7 @@ export function ForgotPasswordPage() {
           <Link className="text-center text-sm font-semibold text-brand-800 hover:underline" to="/entrar">Voltar para o login</Link>
         </div>
       ) : (
-        <form className="grid gap-5" onSubmit={(event) => void form.handleSubmit((values) => request.mutateAsync(values))(event)}>
+        <form className="grid gap-5" onSubmit={(event) => void form.handleSubmit((values) => request.mutate(values))(event)}>
           <Field label="E-mail da conta" error={form.formState.errors.email?.message}>
             <Input autoComplete="email" inputMode="email" placeholder="voce@empresa.com" {...form.register("email")} />
           </Field>

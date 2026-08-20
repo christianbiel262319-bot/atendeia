@@ -47,7 +47,7 @@ function CompanyForm({ tenant, canEdit }: { tenant: TenantProfile; canEdit: bool
   return (
     <Card className="p-5 sm:p-7">
       <div className="flex flex-wrap items-start gap-4"><span className="grid size-12 place-items-center rounded-2xl bg-brand-50 text-brand-700"><Building2 size={23} /></span><div className="min-w-56 flex-1"><div className="flex flex-wrap items-center gap-2"><h2 className="font-semibold">Identidade da empresa</h2><StatusPill value={tenant.status} /></div><p className="mt-2 text-sm leading-6 text-slate-500">O nome aparece na navegação e o fuso é usado em horários e eventos.</p></div></div>
-      <form className="mt-6 grid gap-5 sm:grid-cols-2" onSubmit={(event) => void form.handleSubmit((values) => save.mutateAsync(values))(event)}>
+      <form className="mt-6 grid gap-5 sm:grid-cols-2" onSubmit={(event) => void form.handleSubmit((values) => save.mutate(values))(event)}>
         <Field label="Nome da empresa" error={form.formState.errors.name?.message}><Input disabled={!canEdit} {...form.register("name")} /></Field>
         <Field label="Fuso horário"><Select disabled={!canEdit} {...form.register("timezone")}>{timezones.map((timezone) => <option key={timezone} value={timezone}>{timezone}</option>)}</Select></Field>
         <Field label="Identificador público"><Input disabled value={tenant.slug} /></Field>

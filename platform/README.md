@@ -23,6 +23,10 @@ preparada para operação multi-tenant com PostgreSQL, Redis, filas e WebSocket.
 
 Integrações externas só devem ser ativadas após cadastrar credenciais reais e criptografadas. Nenhuma chave deve entrar no código ou no histórico Git.
 
+## Avaliação sem infraestrutura
+
+O frontend possui um modo DEMO restrito a builds de desenvolvimento/prévia. Ele libera a navegação com dados claramente identificados e bloqueia operações de servidor, sem criar usuário, PIN ou backdoor. Consulte [Modo Preview seguro](docs/preview-mode.md).
+
 ## Desenvolvimento local
 
 1. Copie `.env.example` para `.env` e gere segredos fortes.
@@ -48,4 +52,4 @@ Nenhum plano ou cliente fictício é criado automaticamente. O Super Admin publi
 o catálogo real antes de o billing aparecer para clientes.
 
 Consulte também [arquitetura](docs/architecture.md), [segurança](docs/security.md),
-[API](docs/api.md) e [deploy](docs/deployment.md).
+[API](docs/api.md), [Modo Preview seguro](docs/preview-mode.md) e [deploy](docs/deployment.md).

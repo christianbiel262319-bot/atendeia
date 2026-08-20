@@ -1,3 +1,6 @@
+import { demoApiRequest } from "@/demo/demo-api";
+import { isDemoSessionActive } from "@/demo/demo-mode";
+
 export type ApiErrorPayload = {
   error?: { code?: string; message?: string; details?: unknown };
 };
@@ -23,6 +26,7 @@ export function setApiSession(session: { accessToken: string; tenantId: string }
 }
 
 export function getRealtimeCredential(): string | null {
+  if (isDemoSessionActive()) return null;
   return accessToken ? `token.${accessToken}` : null;
 }
 
@@ -39,6 +43,8 @@ export async function apiRequest<T>(
   path: string,
   init: RequestInit & { authenticated?: boolean; csrf?: boolean; _retried?: boolean } = {},
 ): Promise<T> {
+  if (isDemoSessionActive()) return demoApiRequest<T>(path, init);
+
   const headers = new Headers(init.headers);
   headers.set("accept", "application/json");
   if (init.body && !headers.has("content-type")) headers.set("content-type", "application/json");

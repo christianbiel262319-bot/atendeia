@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowRight, Building2, KeyRound } from "lucide-react";
+import { ArrowRight, Building2, KeyRound, MonitorPlay } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
@@ -9,6 +9,7 @@ import { AuthShell } from "@/auth/auth-shell";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { demoModeAvailable } from "@/demo/demo-mode";
 
 const schema = z.object({
   email: z.email("Informe um e-mail válido"),
@@ -22,7 +23,7 @@ type Stage =
   | { type: "mfa"; challengeToken: string };
 
 export function LoginPage() {
-  const { profile, signIn, verifyMfa } = useAuth();
+  const { profile, enterDemo, signIn, verifyMfa } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const invitationToken = searchParams.get("convite");
@@ -79,7 +80,15 @@ export function LoginPage() {
   }
 
   return (
-    <AuthShell title="Bem-vindo de volta" description="Entre para continuar administrando o atendimento da sua empresa.">
+    <AuthShell
+      title="Bem-vindo de volta"
+      description="Entre para continuar administrando o atendimento da sua empresa."
+      backendUnavailableAction={demoModeAvailable ? (
+        <Button type="button" variant="outline" className="w-full border-amber-300 bg-white text-amber-950 hover:bg-amber-100" onClick={enterDemo}>
+          <MonitorPlay size={17} /> Entrar no modo demonstração
+        </Button>
+      ) : undefined}
+    >
       {stage.type === "credentials" ? (
         <form className="grid gap-5" onSubmit={(event) => void form.handleSubmit(handleCredentials)(event)}>
           <Field label="E-mail" error={form.formState.errors.email?.message}>

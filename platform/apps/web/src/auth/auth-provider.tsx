@@ -7,9 +7,10 @@ import {
   useMemo,
   useState,
 } from "react";
+import { demoProfile, endDemoSession, isDemoSessionActive, startDemoSession } from "@/demo/demo-mode";
 import { apiRequest, decodeAccessToken, restoreApiSession, setApiSession } from "@/lib/api";
 
-type Profile = {
+export type Profile = {
   user: { id: string; email: string; fullName: string; isSuperAdmin: boolean; emailVerifiedAt: string | null };
   tenant: { id: string; name: string; slug: string; timezone: string };
   role: string;
@@ -24,6 +25,8 @@ type SignInResult =
 type AuthContextValue = {
   profile: Profile | null;
   booting: boolean;
+  isDemoMode: boolean;
+  enterDemo: () => void;
   signIn: (input: { email: string; password: string; tenantId?: string }) => Promise<SignInResult>;
   verifyMfa: (input: { challengeToken: string; code: string }) => Promise<void>;
   registerAccount: (input: {
@@ -46,23 +49,37 @@ type SessionResponse = {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [booting, setBooting] = useState(true);
+  const [sessionMode, setSessionMode] = useState<"real" | "demo" | null>(null);
 
   const activateSession = useCallback(async (accessToken: string) => {
     const claims = decodeAccessToken(accessToken);
     setApiSession({ accessToken, tenantId: claims.tenantId });
     const response = await apiRequest<{ data: Profile }>("/v1/auth/me", { authenticated: true });
     setProfile(response.data);
+    setSessionMode("real");
   }, []);
 
   useEffect(() => {
     let active = true;
     void (async () => {
+      if (isDemoSessionActive()) {
+        setApiSession(null);
+        if (active) {
+          setProfile(createDemoProfile());
+          setSessionMode("demo");
+          setBooting(false);
+        }
+        return;
+      }
       try {
         const restoredAccessToken = await restoreApiSession();
         if (active) await activateSession(restoredAccessToken);
       } catch {
         setApiSession(null);
-        if (active) setProfile(null);
+        if (active) {
+          setProfile(null);
+          setSessionMode(null);
+        }
       } finally {
         if (active) setBooting(false);
       }
@@ -71,6 +88,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       active = false;
     };
   }, [activateSession]);
+
+  const enterDemo = useCallback(() => {
+    startDemoSession();
+    setApiSession(null);
+    setProfile(createDemoProfile());
+    setSessionMode("demo");
+  }, []);
 
   const signIn = useCallback(
     async (input: { email: string; password: string; tenantId?: string }): Promise<SignInResult> => {
@@ -129,6 +153,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const signOut = useCallback(async () => {
+    if (sessionMode === "demo") {
+      endDemoSession();
+      setApiSession(null);
+      setProfile(null);
+      setSessionMode(null);
+      return;
+    }
     try {
       await apiRequest<void>("/v1/auth/logout", {
         method: "POST",
@@ -138,20 +169,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setApiSession(null);
       setProfile(null);
+      setSessionMode(null);
     }
-  }, []);
+  }, [sessionMode]);
 
   const reloadProfile = useCallback(async () => {
+    if (sessionMode === "demo") {
+      setProfile(createDemoProfile());
+      return;
+    }
     const response = await apiRequest<{ data: Profile }>("/v1/auth/me", { authenticated: true });
     setProfile(response.data);
-  }, []);
+  }, [sessionMode]);
 
   const value = useMemo(
-    () => ({ profile, booting, signIn, verifyMfa, registerAccount, registerInvitation, reloadProfile, signOut }),
-    [profile, booting, signIn, verifyMfa, registerAccount, registerInvitation, reloadProfile, signOut],
+    () => ({ profile, booting, isDemoMode: sessionMode === "demo", enterDemo, signIn, verifyMfa, registerAccount, registerInvitation, reloadProfile, signOut }),
+    [profile, booting, sessionMode, enterDemo, signIn, verifyMfa, registerAccount, registerInvitation, reloadProfile, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+function createDemoProfile(): Profile {
+  return {
+    user: { ...demoProfile.user },
+    tenant: { ...demoProfile.tenant },
+    role: demoProfile.role,
+    mfaEnabled: demoProfile.mfaEnabled,
+  };
 }
 
 export function useAuth(): AuthContextValue {

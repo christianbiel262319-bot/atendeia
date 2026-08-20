@@ -203,7 +203,7 @@ function ContactCreateDialog({ open, onClose, onCreated }: { open: boolean; onCl
     <Dialog open={open} onClose={onClose} titleId="create-contact-title">
       <section className="max-h-[calc(100vh-2rem)] w-full max-w-xl overflow-y-auto rounded-[var(--radius-dialog)] border border-app-line bg-white p-6 shadow-dialog sm:p-7">
         <div className="flex items-start justify-between gap-4"><div><h2 className="text-lg font-semibold" id="create-contact-title">Novo contato</h2><p className="mt-1 text-sm text-slate-500">O cadastro será salvo para a empresa ativa.</p></div><Button size="icon" variant="ghost" aria-label="Fechar" onClick={onClose}><X size={18} /></Button></div>
-        <form className="mt-6 grid gap-4" onSubmit={(event) => void form.handleSubmit((values) => create.mutateAsync(values))(event)}>
+        <form className="mt-6 grid gap-4" onSubmit={(event) => void form.handleSubmit((values) => create.mutate(values))(event)}>
           <Field label="Nome" error={form.formState.errors.displayName?.message}><Input autoFocus autoComplete="name" {...form.register("displayName")} /></Field>
           <Field label="Telefone internacional" error={form.formState.errors.phoneE164?.message}><Input inputMode="tel" autoComplete="tel" placeholder="+5511999999999" {...form.register("phoneE164")} /></Field>
           <Field label="E-mail (opcional)" error={form.formState.errors.email?.message}><Input type="email" autoComplete="email" {...form.register("email")} /></Field>
@@ -296,7 +296,7 @@ function ContactDetailDialog({ id, onClose }: { id: string | null; onClose: () =
                 <Card className="p-5 sm:p-6">
                   <div className="flex items-center justify-between gap-3"><h3 className="font-semibold">Dados do contato</h3>{canOperate ? <Button size="sm" variant="ghost" onClick={() => setEditing((value) => !value)}>{editing ? "Cancelar edição" : "Editar"}</Button> : null}</div>
                   {editing ? (
-                    <form className="mt-5 grid gap-4" onSubmit={(event) => void form.handleSubmit((values) => save.mutateAsync(values))(event)}>
+                    <form className="mt-5 grid gap-4" onSubmit={(event) => void form.handleSubmit((values) => save.mutate(values))(event)}>
                       <Field label="Nome" error={form.formState.errors.displayName?.message}><Input {...form.register("displayName")} /></Field>
                       <Field label="Telefone" error={form.formState.errors.phoneE164?.message} hint={contact.source === "WHATSAPP" ? "Sincronizado pela Meta e protegido contra alteração manual." : undefined}><Input disabled={contact.source === "WHATSAPP"} {...form.register("phoneE164")} /></Field>
                       <Field label="E-mail" error={form.formState.errors.email?.message}><Input type="email" {...form.register("email")} /></Field>
@@ -324,7 +324,7 @@ function ContactDetailDialog({ id, onClose }: { id: string | null; onClose: () =
               <div className="grid content-start gap-5">
                 <Card className="p-5 sm:p-6">
                   <h3 className="font-semibold">Notas internas</h3><p className="mt-1 text-xs leading-5 text-slate-500">Visíveis somente para a equipe desta empresa.</p>
-                  {canOperate ? <form className="mt-4 grid gap-3" onSubmit={(event) => void noteForm.handleSubmit((values) => addNote.mutateAsync(values))(event)}><Field label="Nova nota" error={noteForm.formState.errors.body?.message}><Textarea rows={3} placeholder="Registre contexto útil para a equipe" {...noteForm.register("body")} /></Field><Button className="w-fit" size="sm" type="submit" disabled={addNote.isPending}>{addNote.isPending ? "Adicionando…" : "Adicionar nota"}</Button></form> : null}
+                  {canOperate ? <form className="mt-4 grid gap-3" onSubmit={(event) => void noteForm.handleSubmit((values) => addNote.mutate(values))(event)}><Field label="Nova nota" error={noteForm.formState.errors.body?.message}><Textarea rows={3} placeholder="Registre contexto útil para a equipe" {...noteForm.register("body")} /></Field><Button className="w-fit" size="sm" type="submit" disabled={addNote.isPending}>{addNote.isPending ? "Adicionando…" : "Adicionar nota"}</Button></form> : null}
                   <div className="mt-5 grid gap-3 border-t border-app-line pt-5">
                     {contact.notes.length === 0 ? <p className="text-sm text-slate-500">Nenhuma nota registrada.</p> : contact.notes.map((note) => {
                       const canRemove = canOperate && (note.authorUserId === profile?.user.id || ["OWNER", "ADMIN", "MANAGER"].includes(profile?.role ?? ""));

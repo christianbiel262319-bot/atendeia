@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { CircleAlert, MessageCircle, ShieldCheck, Sparkles } from "lucide-react";
 import type { ReactNode } from "react";
 
-export function AuthShell({ children, title, description }: { children: ReactNode; title: string; description: string }) {
+export function AuthShell({ children, title, description, backendUnavailableAction }: { children: ReactNode; title: string; description: string; backendUnavailableAction?: ReactNode }) {
   const service = useQuery({
     queryKey: ["api-readiness"],
     queryFn: async () => {
@@ -59,7 +59,10 @@ export function AuthShell({ children, title, description }: { children: ReactNod
           {service.isError ? (
             <div className="mt-6 flex items-start gap-3 rounded-brand border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900" role="status">
               <CircleAlert className="mt-0.5 shrink-0" size={18} />
-              <span><strong>Serviço temporariamente indisponível.</strong> A API, o banco e as filas precisam estar publicados para entrar ou criar uma conta. Nenhuma operação será simulada.</span>
+              <div className="min-w-0 flex-1">
+                <p><strong>Serviço temporariamente indisponível.</strong> A API, o banco e as filas precisam estar publicados para entrar ou criar uma conta.</p>
+                {backendUnavailableAction ? <div className="mt-3">{backendUnavailableAction}</div> : <p className="mt-1 text-xs">Nenhuma operação será simulada.</p>}
+              </div>
             </div>
           ) : null}
           <div className="mt-8">{children}</div>

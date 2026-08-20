@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "ATENDEIA_DEPLOYMENT_STAGE=development VITE_ATENDEIA_STAGE=development VITE_ATENDEIA_PREVIEW=true vite",
+    "prebuild": "node ../../../scripts/assert-preview-safety.mjs",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test": "vitest run",
