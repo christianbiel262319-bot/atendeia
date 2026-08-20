@@ -102,11 +102,14 @@ export function KnowledgePage() {
   const debouncedSearch = useDebouncedValue(search, 300);
   const [status, setStatus] = useState("");
   const [editing, setEditing] = useState<KnowledgeItem | null>(null);
+  const [editorOpen, setEditorOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ resource: ItemKind; id: string; label: string } | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const itemTab = tab === "products" || tab === "services" || tab === "faqs";
   const resourcePath = tab === "services" ? "services" : tab === "faqs" ? "faqs" : "products";
+  const desktopEditor = useMediaQuery("(min-width: 1280px)");
+  const mobileEditorOpen = editorOpen || searchParams.has("novo");
 
   const list = useInfiniteQuery({
     queryKey: ["knowledge-items", resourcePath, debouncedSearch, status],
@@ -142,6 +145,7 @@ export function KnowledgePage() {
     params.set("secao", next);
     setSearchParams(params, { replace: true });
     setEditing(null);
+    setEditorOpen(false);
     setFeedback(null);
     setSearch("");
     setStatus("");
@@ -151,18 +155,45 @@ export function KnowledgePage() {
     return tab === "services" ? "service" : tab === "faqs" ? "faq" : "product";
   }
 
+  function openEditor(item: KnowledgeItem | null): void {
+    setEditing(item);
+    setEditorOpen(true);
+    setFeedback(null);
+  }
+
+  function closeEditor(): void {
+    setEditing(null);
+    setEditorOpen(false);
+    if (searchParams.has("novo")) {
+      const params = new URLSearchParams(searchParams);
+      params.delete("novo");
+      params.set("secao", tab);
+      setSearchParams(params, { replace: true });
+    }
+  }
+
+  async function handleItemSaved(message: string): Promise<void> {
+    closeEditor();
+    setFeedback(message);
+    await invalidateKnowledge(queryClient);
+  }
+
   return (
     <Page>
       <PageHeader eyebrow="BASE DE CONHECIMENTO" title="O que a IA pode afirmar" description="Somente informações persistidas e ativas entram no contexto. Disponibilidade, horários especiais e políticas ficam explícitos para evitar respostas inventadas." />
-      <div className="mb-5 flex gap-2 overflow-x-auto pb-1">
-        {tabs.map(({ key, label, icon: Icon }) => <button type="button" key={key} onClick={() => selectTab(key)} aria-pressed={tab === key} className={cn("inline-flex h-10 shrink-0 items-center gap-2 rounded-brand border px-4 text-xs font-semibold transition duration-fast", tab === key ? "border-brand-700 bg-brand-700 text-white" : "border-app-line bg-white text-slate-600 hover:border-brand-200 hover:bg-brand-50")}><Icon size={15} />{label}</button>)}
+      <div className="mb-5 sm:hidden">
+        <Select aria-label="Seção da base de conhecimento" value={tab} onChange={(event) => selectTab(event.target.value as Tab)}>{tabs.map(({ key, label }) => <option key={key} value={key}>{label}</option>)}</Select>
+      </div>
+      <div className="mb-5 hidden flex-wrap gap-2 sm:flex">
+        {tabs.map(({ key, label, icon: Icon }) => <button type="button" key={key} onClick={() => selectTab(key)} aria-pressed={tab === key} className={cn("inline-flex h-10 items-center gap-2 rounded-brand border px-4 text-xs font-semibold transition duration-fast", tab === key ? "border-brand-700 bg-brand-700 text-white" : "border-app-line bg-white text-slate-600 hover:border-brand-200 hover:bg-brand-50")}><Icon size={15} />{label}</button>)}
       </div>
 
       {feedback ? <div className="mb-4"><SuccessNotice message={feedback} /></div> : null}
       {itemTab ? (
         <div className={cn("grid gap-5", canManage && "xl:grid-cols-[minmax(0,1fr)_400px]")}>
           <section>
-            <Card className="mb-4 grid gap-3 p-4 sm:grid-cols-[1fr_180px]">
+            {canManage ? <Button className="mb-4 w-full xl:hidden" onClick={() => openEditor(null)}><Plus size={16} />Novo {kindLabel(kindForTab())}</Button> : null}
+            <Card className="mb-4 grid min-w-0 gap-3 p-3 sm:grid-cols-[1fr_180px] sm:p-4">
               <label className="flex h-11 items-center gap-2 rounded-brand border border-app-line bg-white px-3 text-slate-400 shadow-sm"><Search size={16} /><span className="sr-only">Pesquisar conhecimento</span><input className="w-full bg-transparent text-sm text-slate-800 outline-none" placeholder="Pesquisar título, descrição ou categoria" value={search} onChange={(event) => setSearch(event.target.value)} /></label>
               <Select aria-label="Filtrar por status" value={status} onChange={(event) => setStatus(event.target.value)}><option value="">Todos os status</option><option value="ACTIVE">Ativos</option><option value="DRAFT">Rascunhos</option><option value="ARCHIVED">Arquivados</option></Select>
             </Card>
@@ -170,10 +201,10 @@ export function KnowledgePage() {
             {remove.isError ? <div className="mb-3"><ErrorNotice message={remove.error.message} /></div> : null}
             {list.isLoading ? <LoadingState label="Carregando conhecimento" /> : null}
             {!list.isLoading && !list.isError && items.length === 0 ? <EmptyState title="Nenhum item encontrado" description={debouncedSearch || status ? "Ajuste os filtros para localizar outro item." : canManage ? "Use o formulário para adicionar informação verdadeira da sua empresa." : "Um administrador ainda não cadastrou informações nesta seção."} /> : null}
-            <div className="grid gap-3">{items.map((item) => <KnowledgeCard key={item.id} item={item} canManage={canManage} onEdit={() => { setEditing(item); setFeedback(null); }} onDelete={() => setDeleteTarget({ resource: kindForTab(), id: item.id, label: item.name ?? item.question ?? "este item" })} />)}</div>
+            <div className="grid gap-3">{items.map((item) => <KnowledgeCard key={item.id} item={item} canManage={canManage} onEdit={() => openEditor(item)} onDelete={() => setDeleteTarget({ resource: kindForTab(), id: item.id, label: item.name ?? item.question ?? "este item" })} />)}</div>
             {list.hasNextPage ? <div className="mt-5 flex justify-center"><Button variant="outline" disabled={list.isFetchingNextPage} onClick={() => void list.fetchNextPage()}>{list.isFetchingNextPage ? "Carregando…" : "Carregar mais"}</Button></div> : null}
           </section>
-          {canManage ? <KnowledgeEditor key={`${kindForTab()}-${editing?.id ?? "new"}`} kind={kindForTab()} item={editing} shouldFocus={searchParams.has("novo")} onCancel={() => setEditing(null)} onSaved={async (message) => { setEditing(null); setFeedback(message); await invalidateKnowledge(queryClient); }} /> : null}
+          {canManage && desktopEditor ? <KnowledgeEditor key={`${kindForTab()}-${editing?.id ?? "new"}`} kind={kindForTab()} item={editing} shouldFocus={searchParams.has("novo")} onCancel={closeEditor} onSaved={handleItemSaved} /> : null}
         </div>
       ) : tab === "company" ? (
         overview.isLoading ? <LoadingState /> : overview.isError ? <ErrorNotice message={overview.error.message} /> : <CompanyWorkspace profile={overview.data?.companyProfile ?? null} canManage={canManage} onSaved={async () => { setFeedback("Informações da empresa atualizadas para a IA."); await invalidateKnowledge(queryClient); }} />
@@ -182,17 +213,23 @@ export function KnowledgePage() {
       )}
 
       <Dialog open={Boolean(deleteTarget)} onClose={() => setDeleteTarget(null)} titleId="delete-knowledge-title">
-        <section className="w-full max-w-md rounded-[var(--radius-dialog)] border border-app-line bg-white p-6 shadow-dialog"><h2 className="text-lg font-semibold" id="delete-knowledge-title">Excluir conhecimento?</h2><p className="mt-2 text-sm leading-6 text-slate-500">“{deleteTarget?.label}” deixará de fazer parte do contexto da IA. Esta ação não pode ser desfeita.</p><div className="mt-6 flex justify-end gap-3"><Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancelar</Button><Button className="bg-red-700 shadow-none hover:bg-red-800" disabled={!deleteTarget || remove.isPending} onClick={() => deleteTarget && remove.mutate({ resource: deleteTarget.resource, id: deleteTarget.id })}>{remove.isPending ? "Excluindo…" : "Excluir"}</Button></div></section>
+        <section className="w-full max-w-md rounded-none border border-app-line bg-white p-5 shadow-dialog sm:rounded-[var(--radius-dialog)] sm:p-6"><h2 className="text-lg font-semibold" id="delete-knowledge-title">Excluir conhecimento?</h2><p className="break-anywhere mt-2 text-sm leading-6 text-slate-500">“{deleteTarget?.label}” deixará de fazer parte do contexto da IA. Esta ação não pode ser desfeita.</p><div className="mt-6 grid grid-cols-2 gap-2 sm:flex sm:justify-end sm:gap-3"><Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancelar</Button><Button className="bg-red-700 shadow-none hover:bg-red-800" disabled={!deleteTarget || remove.isPending} onClick={() => deleteTarget && remove.mutate({ resource: deleteTarget.resource, id: deleteTarget.id })}>{remove.isPending ? "Excluindo…" : "Excluir"}</Button></div></section>
       </Dialog>
+
+      {canManage && !desktopEditor ? (
+        <Dialog open={mobileEditorOpen} onClose={closeEditor} titleId="mobile-knowledge-editor-title">
+          <KnowledgeEditor key={`${kindForTab()}-${editing?.id ?? "new"}-mobile`} kind={kindForTab()} item={editing} shouldFocus={mobileEditorOpen} onCancel={closeEditor} onSaved={handleItemSaved} surface="dialog" />
+        </Dialog>
+      ) : null}
     </Page>
   );
 }
 
 function KnowledgeCard({ item, canManage, onEdit, onDelete }: { item: KnowledgeItem; canManage: boolean; onEdit: () => void; onDelete: () => void }) {
-  return <Card className="overflow-hidden p-0"><div className="flex items-stretch">{item.imageAsset ? <img className="hidden w-28 shrink-0 object-cover sm:block" src={item.imageAsset.secureUrl} alt="" /> : null}<div className="min-w-0 flex-1 p-5"><div className="flex items-start justify-between gap-4"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h2 className="font-semibold text-slate-900">{item.name ?? item.question}</h2><StatusPill value={item.status} />{item.available === false ? <span className="rounded-full bg-red-50 px-2.5 py-1 text-[10px] font-bold text-red-700">INDISPONÍVEL</span> : null}</div>{item.category ? <p className="mt-2 text-[10px] font-bold uppercase tracking-wider text-violet-600">{item.category}</p> : null}<p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-500">{item.description ?? item.answer}</p><div className="mt-3 flex flex-wrap gap-3 text-xs font-semibold text-brand-700">{item.price ? <span>{money(item.price)}</span> : null}{item.durationMinutes ? <span>{item.durationMinutes} min</span> : null}</div></div>{canManage ? <div className="flex shrink-0 gap-1"><Button variant="ghost" size="icon" aria-label={`Editar ${item.name ?? item.question ?? "item"}`} onClick={onEdit}><Pencil size={16} /></Button><Button variant="ghost" size="icon" aria-label={`Excluir ${item.name ?? item.question ?? "item"}`} onClick={onDelete}><Trash2 size={16} /></Button></div> : null}</div></div></div></Card>;
+  return <Card className="min-w-0 overflow-hidden p-0"><div className="flex min-w-0 items-stretch">{item.imageAsset ? <img className="hidden w-28 shrink-0 object-cover sm:block" src={item.imageAsset.secureUrl} alt="" /> : null}<div className="min-w-0 flex-1 p-4 sm:p-5"><div className="flex min-w-0 items-start justify-between gap-2 sm:gap-4"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h2 className="break-anywhere font-semibold text-slate-900">{item.name ?? item.question}</h2><StatusPill value={item.status} />{item.available === false ? <span className="rounded-full bg-red-50 px-2.5 py-1 text-[10px] font-bold text-red-700">INDISPONÍVEL</span> : null}</div>{item.category ? <p className="mt-2 text-[10px] font-bold uppercase tracking-wider text-violet-600">{item.category}</p> : null}<p className="break-anywhere mt-2 line-clamp-3 text-sm leading-6 text-slate-500">{item.description ?? item.answer}</p><div className="mt-3 flex flex-wrap gap-3 text-xs font-semibold text-brand-700">{item.price ? <span>{money(item.price)}</span> : null}{item.durationMinutes ? <span>{item.durationMinutes} min</span> : null}</div></div>{canManage ? <div className="flex shrink-0 flex-col gap-1 sm:flex-row"><Button className="size-10" variant="ghost" size="icon" aria-label={`Editar ${item.name ?? item.question ?? "item"}`} onClick={onEdit}><Pencil size={16} /></Button><Button className="size-10" variant="ghost" size="icon" aria-label={`Excluir ${item.name ?? item.question ?? "item"}`} onClick={onDelete}><Trash2 size={16} /></Button></div> : null}</div></div></div></Card>;
 }
 
-function KnowledgeEditor({ kind, item, shouldFocus, onCancel, onSaved }: { kind: ItemKind; item: KnowledgeItem | null; shouldFocus: boolean; onCancel: () => void; onSaved: (message: string) => Promise<void> }) {
+function KnowledgeEditor({ kind, item, shouldFocus, onCancel, onSaved, surface = "card" }: { kind: ItemKind; item: KnowledgeItem | null; shouldFocus: boolean; onCancel: () => void; onSaved: (message: string) => Promise<void>; surface?: "card" | "dialog" }) {
   const form = useForm<ItemValues>({ resolver: zodResolver(itemSchema), defaultValues: {
     title: item?.name ?? item?.question ?? "",
     description: item?.description ?? item?.answer ?? "",
@@ -232,7 +269,7 @@ function KnowledgeEditor({ kind, item, shouldFocus, onCancel, onSaved }: { kind:
   });
   const imageAssetId = useWatch({ control: form.control, name: "imageAssetId" });
   const [uploadedImage, setUploadedImage] = useState<MediaAsset | null>(item?.imageAsset ?? null);
-  return <Card className="h-fit p-5 sm:p-6 xl:sticky xl:top-24"><div className="flex items-center justify-between gap-3"><div className="flex items-center gap-2">{item ? <Pencil size={18} className="text-brand-700" /> : <Plus size={18} className="text-brand-700" />}<h2 className="font-semibold">{item ? "Editar conhecimento" : "Adicionar conhecimento"}</h2></div>{item ? <Button size="icon" variant="ghost" aria-label="Cancelar edição" onClick={onCancel}><X size={17} /></Button> : null}</div><form className="mt-5 grid gap-4" onSubmit={(event) => void form.handleSubmit((values) => save.mutate(values))(event)}><Field label={kind === "faq" ? "Pergunta" : "Nome"} error={form.formState.errors.title?.message}><Input autoFocus={shouldFocus || Boolean(item)} {...form.register("title")} /></Field><Field label={kind === "faq" ? "Resposta exata" : "Descrição"} error={form.formState.errors.description?.message}><Textarea rows={5} {...form.register("description")} /></Field><Field label="Categoria (opcional)" error={form.formState.errors.category?.message}><Input placeholder="Ex.: Entrega" {...form.register("category")} /></Field>{kind !== "faq" ? <Field label="Preço (opcional)"><Input inputMode="decimal" placeholder="0,00" {...form.register("price")} /></Field> : null}{kind === "service" ? <Field label="Duração em minutos (opcional)"><Input type="number" min="1" {...form.register("durationMinutes")} /></Field> : null}{kind === "product" ? <ProductImageField current={uploadedImage} selectedId={imageAssetId} onSelected={(asset) => { setUploadedImage(asset); form.setValue("imageAssetId", asset?.id ?? null, { shouldDirty: true }); }} /> : null}{kind !== "faq" ? <label className="flex min-h-11 items-center gap-3 rounded-brand border border-app-line bg-slate-50 px-3 text-sm text-slate-700"><input type="checkbox" className="size-4 accent-brand-700" {...form.register("available")} />Disponível para venda ou contratação</label> : null}<Field label="Disponibilidade para a IA"><Select {...form.register("status")}><option value="ACTIVE">Ativo</option><option value="DRAFT">Rascunho</option><option value="ARCHIVED">Arquivado</option></Select></Field>{save.error ? <ErrorNotice message={save.error.message} /> : null}<Button type="submit" disabled={save.isPending}>{save.isPending ? "Salvando…" : item ? "Salvar alterações" : "Adicionar"}</Button></form></Card>;
+  return <Card className={cn("h-fit p-4 sm:p-6 xl:sticky xl:top-24", surface === "dialog" && "min-h-[100dvh] w-full rounded-none border-0 shadow-none")}><div className="flex items-center justify-between gap-3"><div className="flex min-w-0 items-center gap-2">{item ? <Pencil size={18} className="shrink-0 text-brand-700" /> : <Plus size={18} className="shrink-0 text-brand-700" />}<h2 className="truncate font-semibold" id={surface === "dialog" ? "mobile-knowledge-editor-title" : undefined}>{item ? `Editar ${kindLabel(kind)}` : `Novo ${kindLabel(kind)}`}</h2></div>{item || surface === "dialog" ? <Button size="icon" variant="ghost" aria-label="Fechar editor" onClick={onCancel}><X size={17} /></Button> : null}</div><form className="mt-5 grid gap-4" onSubmit={(event) => void form.handleSubmit((values) => save.mutate(values))(event)}><section className="grid gap-4"><Field label={kind === "faq" ? "Pergunta" : "Nome"} error={form.formState.errors.title?.message}><Input autoFocus={shouldFocus || Boolean(item)} {...form.register("title")} /></Field><Field label={kind === "faq" ? "Resposta exata" : "Descrição"} hint={kind === "faq" ? "Escreva apenas informações que a empresa pode afirmar ao cliente." : "Inclua os detalhes necessários para uma resposta precisa."} error={form.formState.errors.description?.message}><Textarea rows={surface === "dialog" ? 4 : 5} {...form.register("description")} /></Field></section><section className="grid gap-4 rounded-xl border border-app-line bg-slate-50/60 p-3 sm:grid-cols-2"><Field label="Categoria (opcional)" error={form.formState.errors.category?.message}><Input placeholder="Ex.: Entrega" {...form.register("category")} /></Field>{kind !== "faq" ? <Field label="Preço (opcional)"><Input inputMode="decimal" placeholder="0,00" {...form.register("price")} /></Field> : null}{kind === "service" ? <Field label="Duração em minutos (opcional)"><Input type="number" min="1" {...form.register("durationMinutes")} /></Field> : null}<Field label="Disponibilidade para a IA"><Select {...form.register("status")}><option value="ACTIVE">Ativo</option><option value="DRAFT">Rascunho</option><option value="ARCHIVED">Arquivado</option></Select></Field>{kind !== "faq" ? <label className="flex min-h-11 items-center gap-3 rounded-brand border border-app-line bg-white px-3 text-sm text-slate-700 sm:col-span-2"><input type="checkbox" className="size-4 shrink-0 accent-brand-700" {...form.register("available")} />Disponível para venda ou contratação</label> : null}</section>{kind === "product" ? <ProductImageField current={uploadedImage} selectedId={imageAssetId} onSelected={(asset) => { setUploadedImage(asset); form.setValue("imageAssetId", asset?.id ?? null, { shouldDirty: true }); }} /> : null}{save.error ? <ErrorNotice message={save.error.message} /> : null}<Button className="w-full" type="submit" disabled={save.isPending}>{save.isPending ? "Salvando…" : item ? "Salvar alterações" : `Adicionar ${kindLabel(kind)}`}</Button></form></Card>;
 }
 
 function ProductImageField({ current, selectedId, onSelected }: { current: MediaAsset | null; selectedId: string | null; onSelected: (asset: MediaAsset | null) => void }) {
@@ -345,6 +382,23 @@ function useDebouncedValue<T>(value: T, delay: number): T {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => { const timer = window.setTimeout(() => setDebounced(value), delay); return () => window.clearTimeout(timer); }, [delay, value]);
   return debounced;
+}
+
+function useMediaQuery(query: string): boolean {
+  const [matches, setMatches] = useState(() => typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia(query).matches);
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const media = window.matchMedia(query);
+    const update = () => setMatches(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, [query]);
+  return matches;
+}
+
+function kindLabel(kind: ItemKind): string {
+  return kind === "product" ? "produto" : kind === "service" ? "serviço" : "FAQ";
 }
 
 export function tabFromSearch(searchParams: URLSearchParams): Tab {

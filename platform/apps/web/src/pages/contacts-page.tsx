@@ -4,7 +4,6 @@ import {
   Archive,
   ArchiveRestore,
   Clock3,
-  FileText,
   Mail,
   MessageCircle,
   Plus,
@@ -117,7 +116,7 @@ export function ContactsPage() {
         action={canCreate ? <Button onClick={() => setSearchParams({ novo: "contato" })}><Plus size={16} />Novo contato</Button> : undefined}
       />
 
-      <Card className="mb-5 grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-[minmax(240px,1fr)_190px_180px_170px]">
+      <Card className="mb-5 grid min-w-0 gap-3 p-3 sm:p-4 md:grid-cols-2 xl:grid-cols-[minmax(240px,1fr)_190px_180px_170px]">
         <label className="flex h-11 items-center gap-2 rounded-brand border border-app-line bg-white px-3 text-slate-400 shadow-sm">
           <Search size={16} aria-hidden="true" />
           <span className="sr-only">Pesquisar contatos</span>
@@ -163,20 +162,18 @@ export function ContactsPage() {
 
 function ContactCard({ contact, onOpen }: { contact: ContactSummary; onOpen: () => void }) {
   return (
-    <Card className="group p-0 transition duration-fast hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-popover">
-      <button type="button" className="w-full p-5 text-left" onClick={onOpen}>
-        <div className="flex items-start gap-4">
-          <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-brand-50 text-brand-700"><UserRound size={20} /></span>
+    <Card className="group min-w-0 p-0 transition duration-fast hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-popover">
+      <button type="button" className="w-full min-w-0 p-4 text-left sm:p-5" onClick={onOpen}>
+        <div className="flex min-w-0 items-start gap-3 sm:gap-4">
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-700 sm:size-11 sm:rounded-2xl"><UserRound size={20} /></span>
           <div className="min-w-0 flex-1">
-            <div className="flex items-start justify-between gap-3"><h2 className="truncate font-semibold text-slate-900">{contact.displayName ?? "Contato sem nome"}</h2><span className="shrink-0 text-[10px] font-semibold text-slate-400">{sourceLabel(contact.source)}</span></div>
-            <p className="mt-1 text-xs text-slate-500">{contact.phoneE164 ?? "Telefone não informado"}</p>
-            {contact.email ? <p className="mt-1 truncate text-xs text-slate-400">{contact.email}</p> : null}
-            <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
-              <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1"><MessageCircle size={12} />{contact._count.conversations}</span>
-              {contact._count.notes > 0 ? <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-1 text-amber-700"><FileText size={11} />{contact._count.notes}</span> : null}
+            <h2 className="truncate font-semibold text-slate-900">{contact.displayName ?? "Contato sem nome"}</h2>
+            <p className="mt-1 truncate text-xs font-medium text-slate-600">{contact.phoneE164 ?? "Telefone não informado"}</p>
+            <div className="mt-3 flex min-w-0 flex-wrap items-center gap-1.5 text-[11px] text-slate-500">
               {contact.tags.slice(0, 3).map((tag) => <span key={tag} className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2 py-1 text-violet-700"><Tags size={11} />{tag}</span>)}
+              {contact.tags.length > 3 ? <span className="rounded-full bg-slate-100 px-2 py-1 text-slate-500">+{contact.tags.length - 3}</span> : null}
             </div>
-            <p className="mt-4 flex items-center gap-1.5 text-[11px] text-slate-400"><Clock3 size={12} />{contact.lastInteractionAt ? `Última interação ${dateTimeLabel(contact.lastInteractionAt)}` : `Criado ${dateTimeLabel(contact.createdAt)}`}</p>
+            <p className="mt-3 flex min-w-0 items-start gap-1.5 text-[11px] leading-4 text-slate-400"><Clock3 className="mt-0.5 shrink-0" size={12} /><span>{contact.lastInteractionAt ? `Última interação ${dateTimeLabel(contact.lastInteractionAt)}` : `Criado ${dateTimeLabel(contact.createdAt)}`}</span></p>
           </div>
         </div>
       </button>
@@ -201,7 +198,7 @@ function ContactCreateDialog({ open, onClose, onCreated }: { open: boolean; onCl
   });
   return (
     <Dialog open={open} onClose={onClose} titleId="create-contact-title">
-      <section className="max-h-[calc(100vh-2rem)] w-full max-w-xl overflow-y-auto rounded-[var(--radius-dialog)] border border-app-line bg-white p-6 shadow-dialog sm:p-7">
+      <section className="h-[100dvh] w-full overflow-y-auto rounded-none border border-app-line bg-white p-5 shadow-dialog sm:h-auto sm:max-h-[calc(100vh-2rem)] sm:max-w-xl sm:rounded-[var(--radius-dialog)] sm:p-7">
         <div className="flex items-start justify-between gap-4"><div><h2 className="text-lg font-semibold" id="create-contact-title">Novo contato</h2><p className="mt-1 text-sm text-slate-500">O cadastro será salvo para a empresa ativa.</p></div><Button size="icon" variant="ghost" aria-label="Fechar" onClick={onClose}><X size={18} /></Button></div>
         <form className="mt-6 grid gap-4" onSubmit={(event) => void form.handleSubmit((values) => create.mutate(values))(event)}>
           <Field label="Nome" error={form.formState.errors.displayName?.message}><Input autoFocus autoComplete="name" {...form.register("displayName")} /></Field>
@@ -209,7 +206,7 @@ function ContactCreateDialog({ open, onClose, onCreated }: { open: boolean; onCl
           <Field label="E-mail (opcional)" error={form.formState.errors.email?.message}><Input type="email" autoComplete="email" {...form.register("email")} /></Field>
           <Field label="Tags separadas por vírgula" error={form.formState.errors.tags?.message}><Input placeholder="Cliente, Retorno" {...form.register("tags")} /></Field>
           {create.error ? <ErrorNotice message={create.error.message} /> : null}
-          <div className="flex justify-end gap-3"><Button variant="outline" onClick={onClose}>Cancelar</Button><Button type="submit" disabled={create.isPending}>{create.isPending ? "Salvando…" : "Criar contato"}</Button></div>
+          <div className="sticky bottom-0 -mx-5 mt-1 grid grid-cols-2 gap-2 border-t border-app-line bg-white/95 px-5 pb-[max(0rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur sm:static sm:mx-0 sm:flex sm:justify-end sm:border-0 sm:bg-transparent sm:p-0"><Button variant="outline" onClick={onClose}>Cancelar</Button><Button type="submit" disabled={create.isPending}>{create.isPending ? "Salvando…" : "Criar contato"}</Button></div>
         </form>
       </section>
     </Dialog>
@@ -280,9 +277,9 @@ function ContactDetailDialog({ id, onClose }: { id: string | null; onClose: () =
 
   return (
     <Dialog open={Boolean(id)} onClose={close} titleId="contact-detail-title">
-      <section className="max-h-[calc(100vh-1.5rem)] w-[min(980px,calc(100vw-1.5rem))] overflow-y-auto rounded-[var(--radius-dialog)] border border-app-line bg-app-canvas shadow-dialog">
-        <header className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-app-line bg-white/95 p-5 backdrop-blur sm:p-6">
-          <div><span className="text-[10px] font-bold tracking-wider text-slate-400">FICHA DO CONTATO</span><h2 className="mt-1 text-xl font-semibold" id="contact-detail-title">{contact?.displayName ?? "Contato"}</h2>{contact ? <p className="mt-1 text-xs text-slate-500">{sourceLabel(contact.source)} · criado {dateTimeLabel(contact.createdAt)}</p> : null}</div>
+      <section className="h-[100dvh] w-full overflow-y-auto rounded-none border border-app-line bg-app-canvas shadow-dialog sm:h-auto sm:max-h-[calc(100vh-1.5rem)] sm:w-[min(980px,calc(100vw-1.5rem))] sm:rounded-[var(--radius-dialog)]">
+        <header className="sticky top-0 z-10 flex min-w-0 items-start justify-between gap-3 border-b border-app-line bg-white/95 p-4 backdrop-blur sm:p-6">
+          <div className="min-w-0"><span className="text-[10px] font-bold tracking-wider text-slate-400">FICHA DO CONTATO</span><h2 className="mt-1 truncate text-lg font-semibold sm:text-xl" id="contact-detail-title">{contact?.displayName ?? "Contato"}</h2>{contact ? <p className="mt-1 text-xs text-slate-500">{sourceLabel(contact.source)} · criado {dateTimeLabel(contact.createdAt)}</p> : null}</div>
           <Button size="icon" variant="ghost" aria-label="Fechar detalhes" onClick={close}><X size={19} /></Button>
         </header>
         <div className="p-4 sm:p-6">
@@ -293,7 +290,7 @@ function ContactDetailDialog({ id, onClose }: { id: string | null; onClose: () =
           {contact ? (
             <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.78fr)]">
               <div className="grid gap-5">
-                <Card className="p-5 sm:p-6">
+                <Card className="p-4 sm:p-6">
                   <div className="flex items-center justify-between gap-3"><h3 className="font-semibold">Dados do contato</h3>{canOperate ? <Button size="sm" variant="ghost" onClick={() => setEditing((value) => !value)}>{editing ? "Cancelar edição" : "Editar"}</Button> : null}</div>
                   {editing ? (
                     <form className="mt-5 grid gap-4" onSubmit={(event) => void form.handleSubmit((values) => save.mutate(values))(event)}>
@@ -301,7 +298,7 @@ function ContactDetailDialog({ id, onClose }: { id: string | null; onClose: () =
                       <Field label="Telefone" error={form.formState.errors.phoneE164?.message} hint={contact.source === "WHATSAPP" ? "Sincronizado pela Meta e protegido contra alteração manual." : undefined}><Input disabled={contact.source === "WHATSAPP"} {...form.register("phoneE164")} /></Field>
                       <Field label="E-mail" error={form.formState.errors.email?.message}><Input type="email" {...form.register("email")} /></Field>
                       <Field label="Tags separadas por vírgula" error={form.formState.errors.tags?.message}><Input {...form.register("tags")} /></Field>
-                      <Button className="w-fit" type="submit" size="sm" disabled={save.isPending}>{save.isPending ? "Salvando…" : "Salvar alterações"}</Button>
+                      <Button className="w-full sm:w-fit" type="submit" size="sm" disabled={save.isPending}>{save.isPending ? "Salvando…" : "Salvar alterações"}</Button>
                     </form>
                   ) : (
                     <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-2">
@@ -313,7 +310,7 @@ function ContactDetailDialog({ id, onClose }: { id: string | null; onClose: () =
                   )}
                 </Card>
 
-                <Card className="p-5 sm:p-6">
+                <Card className="p-4 sm:p-6">
                   <h3 className="font-semibold">Histórico de conversas</h3>
                   {contact.conversations.length === 0 ? <p className="mt-4 text-sm leading-6 text-slate-500">Este contato ainda não possui conversas.</p> : (
                     <div className="mt-4 grid gap-3">{contact.conversations.map((conversation) => <div key={conversation.id} className="rounded-brand border border-app-line bg-slate-50 p-4"><div className="flex items-center justify-between gap-3"><StatusPill value={conversation.status} /><span className="text-[11px] text-slate-400">{dateTimeLabel(conversation.updatedAt)}</span></div><p className="mt-3 line-clamp-2 text-sm text-slate-600">{conversation.messages[0]?.body ?? "Conversa sem mensagens registradas"}</p></div>)}</div>
@@ -322,9 +319,9 @@ function ContactDetailDialog({ id, onClose }: { id: string | null; onClose: () =
               </div>
 
               <div className="grid content-start gap-5">
-                <Card className="p-5 sm:p-6">
+                <Card className="p-4 sm:p-6">
                   <h3 className="font-semibold">Notas internas</h3><p className="mt-1 text-xs leading-5 text-slate-500">Visíveis somente para a equipe desta empresa.</p>
-                  {canOperate ? <form className="mt-4 grid gap-3" onSubmit={(event) => void noteForm.handleSubmit((values) => addNote.mutate(values))(event)}><Field label="Nova nota" error={noteForm.formState.errors.body?.message}><Textarea rows={3} placeholder="Registre contexto útil para a equipe" {...noteForm.register("body")} /></Field><Button className="w-fit" size="sm" type="submit" disabled={addNote.isPending}>{addNote.isPending ? "Adicionando…" : "Adicionar nota"}</Button></form> : null}
+                  {canOperate ? <form className="mt-4 grid gap-3" onSubmit={(event) => void noteForm.handleSubmit((values) => addNote.mutate(values))(event)}><Field label="Nova nota" error={noteForm.formState.errors.body?.message}><Textarea rows={3} placeholder="Registre contexto útil para a equipe" {...noteForm.register("body")} /></Field><Button className="w-full sm:w-fit" size="sm" type="submit" disabled={addNote.isPending}>{addNote.isPending ? "Adicionando…" : "Adicionar nota"}</Button></form> : null}
                   <div className="mt-5 grid gap-3 border-t border-app-line pt-5">
                     {contact.notes.length === 0 ? <p className="text-sm text-slate-500">Nenhuma nota registrada.</p> : contact.notes.map((note) => {
                       const canRemove = canOperate && (note.authorUserId === profile?.user.id || ["OWNER", "ADMIN", "MANAGER"].includes(profile?.role ?? ""));

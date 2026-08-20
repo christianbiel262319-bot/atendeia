@@ -47,17 +47,17 @@ export function AuthShell({ children, title, description, backendUnavailableActi
         </div>
       </section>
 
-      <section className="flex items-center justify-center p-6 sm:p-10">
+      <section className="flex min-w-0 items-center justify-center p-4 min-[360px]:p-5 sm:p-10">
         <div className="w-full max-w-md">
-          <div className="mb-8 lg:hidden">
+          <div className="mb-6 lg:hidden sm:mb-8">
             <span className="inline-flex items-center gap-2 text-lg font-bold text-brand-900">
               <Sparkles className="rounded-lg bg-brand-700 p-1.5 text-white" size={30} /> AtendeIA
             </span>
           </div>
-          <h1 className="text-3xl font-semibold tracking-[-0.04em] text-slate-900">{title}</h1>
+          <h1 className="text-2xl font-semibold tracking-[-0.04em] text-slate-900 sm:text-3xl">{title}</h1>
           <p className="mt-2 text-sm leading-6 text-slate-500">{description}</p>
           {service.isError ? (
-            <div className="mt-6 flex items-start gap-3 rounded-brand border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900" role="status">
+            <div className="mt-5 flex items-start gap-3 rounded-brand border border-amber-200 bg-amber-50 p-3 text-sm leading-6 text-amber-900 sm:mt-6 sm:p-4" role="status">
               <CircleAlert className="mt-0.5 shrink-0" size={18} />
               <div className="min-w-0 flex-1">
                 <p><strong>Serviço temporariamente indisponível.</strong> A API, o banco e as filas precisam estar publicados para entrar ou criar uma conta.</p>
@@ -65,7 +65,7 @@ export function AuthShell({ children, title, description, backendUnavailableActi
               </div>
             </div>
           ) : null}
-          <div className="mt-8">{children}</div>
+          <div className="mt-6 sm:mt-8">{children}</div>
         </div>
       </section>
     </main>

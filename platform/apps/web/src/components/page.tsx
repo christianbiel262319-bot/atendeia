@@ -4,25 +4,25 @@ import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 export function Page({ children, width = "max-w-[1400px]" }: { children: ReactNode; width?: string }) {
-  return <main className={cn("mx-auto w-full p-4 sm:p-7 lg:p-9", width)}>{children}</main>;
+  return <main className={cn("mx-auto w-full min-w-0 px-3 py-4 min-[360px]:px-4 sm:p-7 lg:p-9", width)}>{children}</main>;
 }
 
 export function PageHeader({ eyebrow, title, description, action }: { eyebrow: string; title: string; description: string; action?: ReactNode }) {
   return (
-    <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
-      <div>
+    <div className="mb-5 flex min-w-0 flex-col items-stretch justify-between gap-4 sm:mb-7 sm:flex-row sm:items-end">
+      <div className="min-w-0">
         <span className="text-[10px] font-bold tracking-[0.16em] text-slate-400">{eyebrow}</span>
         <h1 className="mt-2 text-[length:var(--font-size-title)] font-semibold tracking-[-0.045em] text-slate-900">{title}</h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">{description}</p>
       </div>
-      {action}
+      {action ? <div className="w-full shrink-0 sm:w-auto [&>*]:w-full sm:[&>*]:w-auto">{action}</div> : null}
     </div>
   );
 }
 
 export function EmptyState({ title, description, action }: { title: string; description: string; action?: ReactNode }) {
   return (
-    <Card className="grid min-h-64 place-items-center p-8 text-center">
+    <Card className="grid min-h-48 place-items-center p-5 text-center sm:min-h-64 sm:p-8">
       <div className="max-w-md">
         <span className="mx-auto grid size-12 place-items-center rounded-2xl bg-slate-100 text-slate-400"><Inbox size={22} /></span>
         <h2 className="mt-4 text-base font-semibold">{title}</h2>
@@ -34,7 +34,7 @@ export function EmptyState({ title, description, action }: { title: string; desc
 }
 
 export function ErrorNotice({ message }: { message: string }) {
-  return <p role="alert" className="flex items-start gap-2 rounded-brand border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700"><AlertCircle className="mt-0.5 shrink-0" size={16} />{message}</p>;
+  return <p role="alert" className="break-anywhere flex items-start gap-2 rounded-brand border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700"><AlertCircle className="mt-0.5 shrink-0" size={16} />{message}</p>;
 }
 
 export function SuccessNotice({ message }: { message: string }) {

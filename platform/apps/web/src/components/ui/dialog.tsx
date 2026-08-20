@@ -45,9 +45,9 @@ export function Dialog({
 
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-[70] grid place-items-center p-4" role="presentation">
+    <div className="fixed inset-0 z-[70] grid place-items-center p-0 sm:p-4" role="presentation">
       <button className="absolute inset-0 bg-slate-950/45 backdrop-blur-[2px]" type="button" onClick={onClose} aria-label="Fechar janela" />
-      <div ref={containerRef} className="relative w-full max-w-max" role="dialog" aria-modal="true" aria-labelledby={titleId}>
+      <div ref={containerRef} className="relative max-h-[100dvh] w-full max-w-max overflow-y-auto sm:max-h-[calc(100dvh-2rem)]" role="dialog" aria-modal="true" aria-labelledby={titleId}>
         {children}
       </div>
     </div>

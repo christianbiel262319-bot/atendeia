@@ -3,10 +3,12 @@ import {
   BarChart3,
   BookOpen,
   Bot,
+  Building2,
   ChevronRight,
   CircleHelp,
   CreditCard,
   Inbox,
+  Info,
   LogOut,
   Menu,
   MonitorPlay,
@@ -53,6 +55,8 @@ export function AppLayout() {
     () => typeof window !== "undefined" && window.localStorage.getItem(collapsedStorageKey) === "true",
   );
   const [supportOpen, setSupportOpen] = useState(false);
+  const [demoInfoOpen, setDemoInfoOpen] = useState(false);
+  const [companyInfoOpen, setCompanyInfoOpen] = useState(false);
   const summary = useQuery({
     queryKey: ["dashboard-summary", profile?.tenant.id],
     queryFn: async () => (await apiRequest<{ data: DashboardSummary }>("/v1/dashboard/summary", { authenticated: true })).data,
@@ -154,21 +158,25 @@ export function AppLayout() {
       {mobileOpen ? <button className="fixed inset-0 z-30 bg-brand-950/45 backdrop-blur-[2px] lg:hidden" type="button" onClick={() => setMobileOpen(false)} aria-label="Fechar menu" /> : null}
 
       <div className={cn("transition-[padding] duration-standard", collapsed ? "lg:pl-[84px]" : "lg:pl-64")}>
-        <header className="sticky top-0 z-20 flex h-[76px] items-center justify-between border-b border-app-line bg-white/92 px-4 backdrop-blur-xl sm:px-7">
-          <div className="flex min-w-0 items-center gap-3">
-            <button className="grid size-10 shrink-0 place-items-center rounded-brand border border-app-line text-slate-600 transition hover:bg-slate-50 lg:hidden" type="button" onClick={() => setMobileOpen(true)} aria-label="Abrir menu"><Menu size={20} /></button>
-            <div className="min-w-0"><span className="hidden text-[9px] font-bold tracking-[0.14em] text-slate-400 sm:block">EMPRESA ATIVA</span><strong className="block truncate text-sm text-slate-700 sm:mt-1">{profile?.tenant.name}</strong></div>
-          </div>
-          <div className="flex items-center gap-2 sm:gap-3">
-            {isDemoMode ? <span className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-2.5 text-[10px] font-bold tracking-wide text-amber-900" aria-label="Modo demonstração ativo"><MonitorPlay size={14} /><span className="hidden sm:inline">MODO DEMONSTRAÇÃO</span><span className="sm:hidden">DEMO</span></span> : null}
+        <header className="sticky top-0 z-20 grid h-16 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 border-b border-app-line bg-white/92 px-3 backdrop-blur-xl min-[360px]:gap-3 min-[360px]:px-4 sm:h-[76px] sm:px-7">
+          <button className="grid size-10 shrink-0 place-items-center rounded-brand border border-app-line text-slate-600 transition hover:bg-slate-50 lg:hidden" type="button" onClick={() => setMobileOpen(true)} aria-label="Abrir menu"><Menu size={20} /></button>
+          <button className="group min-w-0 text-left lg:col-start-1" type="button" onClick={() => setCompanyInfoOpen(true)} aria-label={`Empresa ativa: ${profile?.tenant.name}. Abrir detalhes.`}>
+            <span className="hidden text-[9px] font-bold tracking-[0.14em] text-slate-400 sm:block">EMPRESA ATIVA</span>
+            <strong className="block truncate text-sm text-slate-700 group-hover:text-brand-800 sm:mt-1">{profile?.tenant.name}</strong>
+            {isDemoMode ? <span className="mt-0.5 flex items-center gap-1 text-[9px] font-bold tracking-wide text-amber-700 sm:hidden"><MonitorPlay size={10} /> MODO DEMONSTRAÇÃO</span> : null}
+          </button>
+          <div className="flex items-center justify-end gap-2 sm:gap-3 lg:col-start-3">
+            {isDemoMode ? <button className="hidden min-h-9 items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-2.5 text-[10px] font-bold tracking-wide text-amber-900 sm:inline-flex" type="button" onClick={() => setDemoInfoOpen(true)} aria-label="Modo demonstração ativo. Abrir informações."><MonitorPlay size={14} />MODO DEMONSTRAÇÃO</button> : null}
             <QuickCreateMenu role={profile?.role ?? "AGENT"} />
           </div>
         </header>
-        {isDemoMode ? <div className="border-b border-amber-200 bg-amber-50/90 px-4 py-2 text-center text-[11px] font-medium leading-5 text-amber-900 sm:px-7" role="status"><strong>Dados DEMO:</strong> nada nesta sessão representa clientes ou operações reais. Ações de servidor exibem “Disponível após conectar o ambiente de homologação”.</div> : null}
+        {isDemoMode ? <div className="flex min-h-8 items-center justify-center gap-2 border-b border-amber-200 bg-amber-50/90 px-3 py-1 text-center text-[10px] font-medium leading-4 text-amber-900 sm:px-7" role="status"><strong>Dados DEMO</strong><span aria-hidden="true">·</span><span className="hidden min-[390px]:inline">nenhuma alteração é real</span><button className="inline-flex min-h-7 items-center gap-1 rounded-lg px-1.5 font-bold underline-offset-2 hover:bg-amber-100 hover:underline" type="button" onClick={() => setDemoInfoOpen(true)}><Info size={12} /> Entenda</button></div> : null}
         <Outlet />
       </div>
 
       <SupportDialog open={supportOpen} onClose={() => setSupportOpen(false)} />
+      <DemoInfoDialog open={demoInfoOpen} onClose={() => setDemoInfoOpen(false)} />
+      <CompanyInfoDialog name={profile?.tenant.name ?? "Empresa"} email={profile?.user.email ?? ""} open={companyInfoOpen} onClose={() => setCompanyInfoOpen(false)} />
     </div>
   );
 }
@@ -251,11 +259,11 @@ function QuickCreateMenu({ role }: { role: string }) {
 
   return (
     <div className="relative" ref={container}>
-      <Button size="sm" onClick={() => setOpen((current) => !current)} aria-expanded={open} aria-haspopup="menu">
+      <Button className="size-10 px-0 sm:w-auto sm:px-3" size="sm" onClick={() => setOpen((current) => !current)} aria-expanded={open} aria-haspopup="menu" aria-label="Abrir criação rápida">
         <Plus size={16} /><span className="hidden sm:inline">Criar</span>
       </Button>
       {open ? (
-        <div className="absolute right-0 top-[calc(100%+10px)] z-50 w-64 overflow-hidden rounded-[15px] border border-app-line bg-white p-2 shadow-popover" role="menu" aria-label="Criação rápida">
+        <div className="absolute right-0 top-[calc(100%+10px)] z-50 w-[min(16rem,calc(100vw-1.5rem))] overflow-hidden rounded-[15px] border border-app-line bg-white p-2 shadow-popover" role="menu" aria-label="Criação rápida">
           <div className="px-3 pb-2 pt-1"><span className="text-[9px] font-bold tracking-[0.14em] text-slate-400">CRIAÇÃO RÁPIDA</span><p className="mt-1 text-[11px] text-slate-500">Somente ações permitidas para seu perfil.</p></div>
           {canCreateContact ? <QuickLink to="/contatos?novo=contato" label="Novo contato" icon={UserRound} onNavigate={() => setOpen(false)} /> : null}
           {canCreateKnowledge ? <>
@@ -291,6 +299,35 @@ function SupportDialog({ open, onClose }: { open: boolean; onClose: () => void }
         <h2 className="mt-4 text-lg font-semibold text-slate-900" id="support-title">Configuração necessária</h2>
         <p className="mt-2 text-sm leading-6 text-slate-500">O canal oficial de suporte ainda não foi configurado. Nenhum atendimento será simulado ou enviado para um destino inexistente.</p>
         <Button className="mt-6 w-full" variant="outline" onClick={onClose}>Entendi</Button>
+      </section>
+    </Dialog>
+  );
+}
+
+function DemoInfoDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  return (
+    <Dialog open={open} onClose={onClose} titleId="demo-info-title">
+      <section className="w-full rounded-none border border-amber-200 bg-white p-5 shadow-dialog sm:max-w-md sm:rounded-[var(--radius-dialog)] sm:p-6">
+        <button autoFocus className="absolute right-3 top-3 grid size-9 place-items-center rounded-brand text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 sm:right-4 sm:top-4" type="button" onClick={onClose} aria-label="Fechar"><X size={18} /></button>
+        <span className="grid size-11 place-items-center rounded-brand bg-amber-50 text-amber-700"><MonitorPlay size={21} /></span>
+        <h2 className="mt-4 pr-10 text-lg font-semibold text-slate-900" id="demo-info-title">Você está no Modo Demonstração</h2>
+        <p className="mt-2 text-sm leading-6 text-slate-600">Todos os registros exibidos são identificados como DEMO e servem apenas para avaliar a interface. Nenhuma operação é enviada a clientes ou serviços externos.</p>
+        <p className="mt-3 rounded-brand bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600">Ações que exigem servidor mostram: <strong>“Disponível após conectar o ambiente de homologação.”</strong></p>
+        <Button className="mt-6 w-full" variant="outline" onClick={onClose}>Continuar avaliando</Button>
+      </section>
+    </Dialog>
+  );
+}
+
+function CompanyInfoDialog({ name, email, open, onClose }: { name: string; email: string; open: boolean; onClose: () => void }) {
+  return (
+    <Dialog open={open} onClose={onClose} titleId="company-info-title">
+      <section className="w-full rounded-none border border-app-line bg-white p-5 shadow-dialog sm:max-w-sm sm:rounded-[var(--radius-dialog)] sm:p-6">
+        <button autoFocus className="absolute right-3 top-3 grid size-9 place-items-center rounded-brand text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 sm:right-4 sm:top-4" type="button" onClick={onClose} aria-label="Fechar"><X size={18} /></button>
+        <span className="grid size-11 place-items-center rounded-brand bg-brand-50 text-brand-700"><Building2 size={21} /></span>
+        <h2 className="break-anywhere mt-4 pr-10 text-lg font-semibold text-slate-900" id="company-info-title">{name}</h2>
+        <p className="break-anywhere mt-2 text-sm text-slate-500">Sessão de {email}</p>
+        <Button className="mt-6 w-full" variant="outline" onClick={onClose}>Fechar</Button>
       </section>
     </Dialog>
   );
