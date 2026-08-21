@@ -56,28 +56,34 @@ export class TenantService {
   }
 
   async onboardingStatus(context: TenantContext) {
-    const [connection, productCount, serviceCount, faqCount, ai, memberCount] =
+    const [connection, productCount, serviceCount, faqCount, businessHourCount, exceptionCount, companyProfile, ai, memberCount] =
       await prisma.$transaction([
         prisma.whatsAppConnection.findFirst({
-          where: { tenantId: context.tenantId, status: "CONNECTED" },
-          select: { id: true },
+          where: { tenantId: context.tenantId },
+          select: { status: true },
+          orderBy: { createdAt: "desc" },
         }),
         prisma.product.count({ where: { tenantId: context.tenantId, status: "ACTIVE" } }),
         prisma.service.count({ where: { tenantId: context.tenantId, status: "ACTIVE" } }),
         prisma.faq.count({ where: { tenantId: context.tenantId, status: "ACTIVE" } }),
+        prisma.businessHour.count({ where: { tenantId: context.tenantId } }),
+        prisma.businessHourException.count({ where: { tenantId: context.tenantId } }),
+        prisma.companyProfile.findUnique({
+          where: { tenantId: context.tenantId },
+          select: { description: true, address: true, phoneE164: true, email: true, policies: true, usefulLinks: true },
+        }),
         prisma.aiConfiguration.findUnique({
           where: { tenantId: context.tenantId },
-          select: { enabled: true },
+          select: { id: true },
         }),
         prisma.membership.count({ where: { tenantId: context.tenantId, active: true } }),
       ]);
-    const steps = {
-      whatsapp: Boolean(connection),
-      knowledge: productCount + serviceCount + faqCount > 0,
-      ai: Boolean(ai?.enabled),
+    return calculateOnboardingStatus({
+      whatsapp: connection?.status === "CONNECTED",
+      knowledge: productCount + serviceCount + faqCount + businessHourCount + exceptionCount > 0 || companyProfileHasKnowledge(companyProfile),
+      ai: Boolean(ai),
       team: memberCount > 1,
-    };
-    return { steps, completed: Object.values(steps).filter(Boolean).length, total: 4 };
+    });
   }
 
   async listMemberships(context: TenantContext) {
@@ -101,4 +107,16 @@ export class TenantService {
       throw forbidden("Recurso não pertence ao tenant ativo");
     }
   }
+}
+
+type OnboardingSteps = { whatsapp: boolean; knowledge: boolean; ai: boolean; team: boolean };
+
+export function calculateOnboardingStatus(steps: OnboardingSteps) {
+  return { steps, completed: Object.values(steps).filter(Boolean).length, total: Object.keys(steps).length };
+}
+
+function companyProfileHasKnowledge(profile: { description: string | null; address: string | null; phoneE164: string | null; email: string | null; policies: string | null; usefulLinks: unknown } | null): boolean {
+  if (!profile) return false;
+  const hasText = [profile.description, profile.address, profile.phoneE164, profile.email, profile.policies].some((value) => Boolean(value?.trim()));
+  return hasText || (Array.isArray(profile.usefulLinks) && profile.usefulLinks.length > 0);
 }

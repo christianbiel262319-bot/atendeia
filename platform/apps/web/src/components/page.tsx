@@ -55,7 +55,7 @@ export function LoadingState({ label = "Carregando dados" }: { label?: string })
 export function StatusPill({ value }: { value: string }) {
   const positive = ["ACTIVE", "CONNECTED", "OPEN", "SENT", "DELIVERED", "READ", "PAID"].includes(value);
   const attention = ["WAITING_HUMAN", "TRIALING", "PAST_DUE", "PENDING", "DRAFT"].includes(value);
-  return <span className={cn("inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wide", positive ? "bg-brand-50 text-brand-700" : attention ? "bg-amber-50 text-amber-700" : "bg-slate-100 text-slate-600")}>{translateStatus(value)}</span>;
+  return <span className={cn("inline-flex shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wide", positive ? "bg-brand-50 text-brand-700" : attention ? "bg-amber-50 text-amber-700" : "bg-slate-100 text-slate-600")}>{translateStatus(value)}</span>;
 }
 
 function translateStatus(value: string): string {

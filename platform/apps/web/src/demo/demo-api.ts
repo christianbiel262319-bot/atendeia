@@ -19,7 +19,7 @@ const conversations = [
     contact: {
       id: "00000000-0000-4000-8000-000000001001",
       displayName: "Cliente Demonstração 01 — DEMO",
-      phoneE164: "+5511900000001",
+      phoneE164: "+5500000000001",
       tags: ["DEMO", "Orçamento"],
     },
     messages: [
@@ -34,7 +34,7 @@ const conversations = [
     contact: {
       id: "00000000-0000-4000-8000-000000001002",
       displayName: "Cliente Demonstração 02 — DEMO",
-      phoneE164: "+5511900000002",
+      phoneE164: "+5500000000002",
       tags: ["DEMO", "Prioridade"],
     },
     messages: [
@@ -49,7 +49,7 @@ const conversations = [
     contact: {
       id: "00000000-0000-4000-8000-000000001003",
       displayName: "Cliente Demonstração 03 — DEMO",
-      phoneE164: "+5511900000003",
+      phoneE164: "+5500000000003",
       tags: ["DEMO", "Cliente"],
     },
     messages: [
@@ -83,7 +83,7 @@ const contacts = [
   {
     id: "00000000-0000-4000-8000-000000001001",
     displayName: "Cliente Demonstração 01 — DEMO",
-    phoneE164: "+5511900000001",
+    phoneE164: "+5500000000001",
     email: "cliente01@demo.invalid",
     tags: ["DEMO", "Orçamento"],
     source: "WHATSAPP",
@@ -96,7 +96,7 @@ const contacts = [
   {
     id: "00000000-0000-4000-8000-000000001002",
     displayName: "Cliente Demonstração 02 — DEMO",
-    phoneE164: "+5511900000002",
+    phoneE164: "+5500000000002",
     email: "cliente02@demo.invalid",
     tags: ["DEMO", "Prioridade"],
     source: "MANUAL",
@@ -109,7 +109,7 @@ const contacts = [
   {
     id: "00000000-0000-4000-8000-000000001003",
     displayName: "Cliente Demonstração 03 — DEMO",
-    phoneE164: "+5511900000003",
+    phoneE164: "+5500000000003",
     email: null,
     tags: ["DEMO", "Cliente"],
     source: "IMPORT",
@@ -122,7 +122,7 @@ const contacts = [
   {
     id: "00000000-0000-4000-8000-000000001004",
     displayName: "Contato Arquivado — DEMO",
-    phoneE164: "+5511900000004",
+    phoneE164: "+5500000000004",
     email: "arquivado@demo.invalid",
     tags: ["DEMO", "Arquivado"],
     source: "API",
@@ -208,7 +208,7 @@ function resolveDemoRequest<T>(path: string, init: RequestInit): T {
       companyProfile: {
         description: "DEMO — Empresa fictícia usada exclusivamente para avaliação visual do AtendeIA.",
         address: "DEMO — Avenida da Prévia, 100, São Paulo - SP",
-        phoneE164: "+5511900000099",
+        phoneE164: "+5500000000099",
         email: "empresa@demo.invalid",
         policies: "DEMO — Estas políticas são ilustrativas e não representam condições comerciais reais.",
         usefulLinks: [{ label: "Site demonstrativo", url: "https://example.com" }],

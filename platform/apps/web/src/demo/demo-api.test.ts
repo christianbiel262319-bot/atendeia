@@ -5,9 +5,16 @@ import { DEMO_BACKEND_MESSAGE } from "./demo-mode";
 
 describe("API local do modo demonstração", () => {
   it("fornece dados identificados como DEMO para leitura", async () => {
-    const result = await demoApiRequest<{ data: { items: Array<{ displayName: string | null; tags: string[] }> } }>("/v1/crm/contacts?archived=false");
+    const result = await demoApiRequest<{ data: { items: Array<{ displayName: string | null; phoneE164: string; tags: string[] }> } }>("/v1/crm/contacts?archived=false");
     expect(result.data.items.length).toBeGreaterThan(0);
     expect(result.data.items.every((item) => item.displayName?.includes("DEMO") && item.tags.includes("DEMO"))).toBe(true);
+    expect(result.data.items.every((item) => item.phoneE164.startsWith("+5500"))).toBe(true);
+  });
+
+  it("mantém o checklist DEMO coerente com as quatro condições exibidas", async () => {
+    const result = await demoApiRequest<{ data: { onboarding: { steps: Record<string, boolean>; completed: number; total: number } } }>("/v1/dashboard/summary");
+    expect(result.data.onboarding.completed).toBe(Object.values(result.data.onboarding.steps).filter(Boolean).length);
+    expect(result.data.onboarding.total).toBe(Object.keys(result.data.onboarding.steps).length);
   });
 
   it("mantém filtros visuais utilizáveis", async () => {

@@ -69,6 +69,7 @@ export function AutomationPage() {
   const aiEnabled = useWatch({ control: aiForm.control, name: "enabled" });
   const confidence = useWatch({ control: aiForm.control, name: "minimumConfidence" });
   const currentTone = useWatch({ control: aiForm.control, name: "tone" });
+  const hasCustomTone = Boolean(currentTone && !standardTones.some((tone) => tone.value === currentTone));
 
   useEffect(() => {
     if (!ai.data) return;
@@ -175,12 +176,13 @@ export function AutomationPage() {
               <SectionHeading title="Comportamento e tom de voz" description="Escolha como a assistente se comunica e quão cautelosa ela deve ser." />
               <div className="mt-4 grid gap-4">
                 <Field label="Tom de voz" hint="Você poderá personalizar instruções mais específicas em uma etapa futura." error={aiForm.formState.errors.tone?.message}>
-                  <Select {...aiForm.register("tone")}>
-                    <option value="profissional e cordial">Profissional e cordial</option>
-                    <option value="acolhedor e próximo">Acolhedor e próximo</option>
-                    <option value="objetivo e direto">Objetivo e direto</option>
-                    {currentTone && !["profissional e cordial", "acolhedor e próximo", "objetivo e direto"].includes(currentTone) ? <option value={currentTone}>{currentTone}</option> : null}
-                  </Select>
+                  <>
+                    <Select title={currentTone} {...aiForm.register("tone")}>
+                      {standardTones.map((tone) => <option key={tone.value} value={tone.value}>{tone.label}</option>)}
+                      {hasCustomTone && currentTone ? <option value={currentTone}>Personalizado{isDemoMode ? " — DEMO" : ""}</option> : null}
+                    </Select>
+                    {hasCustomTone && currentTone ? <span className="break-anywhere text-xs font-normal leading-5 text-slate-500"><strong className="font-medium text-slate-600">Configuração atual:</strong> {currentTone}</span> : null}
+                  </>
                 </Field>
                 <fieldset>
                   <legend className="text-sm font-medium text-slate-700">Quando houver dúvida</legend>
@@ -197,8 +199,8 @@ export function AutomationPage() {
             <section className="rounded-xl border border-app-line p-4">
               <SectionHeading title="Transferência para humano" description="Mensagens claras evitam que o cliente pense que a IA inventou uma resposta." icon={<UserRoundCheck size={17} />} />
               <div className="mt-4 grid gap-4">
-                <Field label="Quando não encontrar uma resposta" hint="Opcional. Se vazio, o sistema usa uma mensagem segura padrão."><Textarea rows={2} placeholder="Não encontrei essa informação. Vou chamar nossa equipe." {...aiForm.register("fallbackMessage")} /></Field>
-                <Field label="Ao transferir para uma pessoa" hint="Opcional. Informe o que o cliente pode esperar."><Textarea rows={2} placeholder="Um atendente continuará esta conversa." {...aiForm.register("transferMessage")} /></Field>
+                <Field label="Quando não encontrar uma resposta" hint="Opcional. Se vazio, o sistema usa uma mensagem segura padrão."><Textarea className="min-h-24 resize-none overflow-y-auto" rows={3} wrap="soft" placeholder="Não encontrei essa informação. Vou chamar nossa equipe." {...aiForm.register("fallbackMessage")} /></Field>
+                <Field label="Ao transferir para uma pessoa" hint="Opcional. Informe o que o cliente pode esperar."><Textarea className="min-h-24 resize-none overflow-y-auto" rows={3} wrap="soft" placeholder="Um atendente continuará esta conversa." {...aiForm.register("transferMessage")} /></Field>
               </div>
             </section>
 
@@ -218,6 +220,12 @@ export function AutomationPage() {
     </Page>
   );
 }
+
+const standardTones = [
+  { value: "profissional e cordial", label: "Profissional e cordial" },
+  { value: "acolhedor e próximo", label: "Acolhedor e próximo" },
+  { value: "objetivo e direto", label: "Objetivo e direto" },
+] as const;
 
 function SetupStep({ number, label }: { number: string; label: string }) {
   return <li className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2.5"><span className="grid size-6 shrink-0 place-items-center rounded-full bg-brand-100 text-[10px] font-bold text-brand-800">{number}</span><span>{label}</span></li>;

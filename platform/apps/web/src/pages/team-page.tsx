@@ -69,16 +69,17 @@ export function TeamPage() {
           const ownerCanManage = profile?.role === "OWNER";
           const canChangeRole = ownerCanManage && member.user.id !== profile?.user.id;
           const canToggle = member.user.id !== profile?.user.id && (ownerCanManage || adminCanManage);
-          return <Card key={member.id} className="min-w-0 p-4 sm:p-5">
-            <div className="flex min-w-0 items-start gap-3">
+          return <Card key={member.id} className="min-w-0 p-3.5 sm:p-5">
+            <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3">
               <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-slate-100 text-slate-500 sm:size-11 sm:rounded-2xl"><UserRound size={20} /></span>
-              <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><strong className="truncate text-sm">{member.user.fullName}</strong><StatusPill value={member.active ? "ACTIVE" : "INACTIVE"} /></div><p className="mt-1 text-xs font-medium text-slate-600">{roleLabel(member.role)}</p></div>
+              <div className="min-w-0"><strong className="block break-words text-sm leading-5" title={member.user.fullName}>{member.user.fullName}</strong><p className="mt-1 text-xs font-medium text-slate-600">{roleLabel(member.role)}</p></div>
+              <StatusPill value={member.active ? "ACTIVE" : "INACTIVE"} />
             </div>
-            <div className="mt-4 grid min-w-0 gap-3 border-t border-app-line pt-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+            <div className="mt-3 grid min-w-0 gap-3 border-t border-app-line pt-3 sm:mt-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end sm:pt-4">
               <div className="min-w-0"><p className="break-anywhere text-xs text-slate-500">{member.user.email}</p><p className="mt-1 inline-flex items-center gap-1 text-[10px] font-semibold text-slate-400"><Shield size={12} />{member.mfaEnabled ? "MFA ativado" : "MFA não ativado"}</p></div>
               <div className="grid gap-2 min-[390px]:grid-cols-2 sm:flex">
                 <Select aria-label={`Função de ${member.user.fullName}`} className="w-full sm:w-40" value={member.role} disabled={update.isPending || !canChangeRole} onChange={(event) => { if (event.target.value !== member.role) setPendingRole({ member, role: event.target.value }); }}>{legacyRole ? <option value={member.role}>{member.role}</option> : null}<option value="OWNER">Proprietário</option><option value="ADMIN">Administrador</option><option value="AGENT">Atendente</option></Select>
-                {canToggle ? <Button className="w-full sm:w-auto" variant="outline" size="sm" disabled={update.isPending} onClick={() => setPendingToggle(member)}>{member.active ? "Desativar" : "Reativar"}</Button> : null}
+                {canToggle ? <Button className="min-h-11 w-full sm:min-h-9 sm:w-auto" variant="outline" size="sm" disabled={update.isPending} onClick={() => setPendingToggle(member)}>{member.active ? "Desativar" : "Reativar"}</Button> : null}
               </div>
             </div>
           </Card>;
