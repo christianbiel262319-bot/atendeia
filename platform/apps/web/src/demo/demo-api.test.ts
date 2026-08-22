@@ -30,4 +30,30 @@ describe("API local do modo demonstração", () => {
       status: 503,
     }));
   });
+
+  it("carrega a navegação demonstrativa sem consultar infraestrutura externa", async () => {
+    const originalFetch = globalThis.fetch;
+    let externalRequests = 0;
+    globalThis.fetch = () => {
+      externalRequests += 1;
+      return Promise.reject(new Error("A infraestrutura externa não deveria ser consultada"));
+    };
+
+    try {
+      const [dashboard, conversations, team, plans] = await Promise.all([
+        demoApiRequest<{ data: { conversations: number } }>("/v1/dashboard/summary"),
+        demoApiRequest<{ data: Array<{ id: string }> }>("/v1/conversations"),
+        demoApiRequest<{ data: Array<{ id: string }> }>("/v1/team"),
+        demoApiRequest<{ data: Array<{ id: string }> }>("/v1/billing/plans"),
+      ]);
+
+      expect(dashboard.data.conversations).toBeGreaterThan(0);
+      expect(conversations.data.length).toBeGreaterThan(0);
+      expect(team.data.length).toBeGreaterThan(0);
+      expect(plans.data.length).toBeGreaterThan(0);
+      expect(externalRequests).toBe(0);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
 });

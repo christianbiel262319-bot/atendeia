@@ -8,6 +8,8 @@ type DemoAvailabilityInput = {
   stage?: string | undefined;
 };
 
+export type DemoSessionStore = Pick<Storage, "getItem" | "setItem" | "removeItem">;
+
 export function canEnableDemoMode({ development, previewFlag, stage }: DemoAvailabilityInput): boolean {
   if (development) return true;
   return stage === "preview" && previewFlag === "true";
@@ -37,16 +39,25 @@ export const demoProfile = {
   mfaEnabled: false,
 } as const;
 
+export function hasAuthorizedDemoSession(available: boolean, storage: DemoSessionStore): boolean {
+  return available && storage.getItem(demoSessionKey) === "active";
+}
+
+export function createAuthorizedDemoSession(available: boolean, storage: DemoSessionStore): void {
+  if (!available) throw new Error("O modo demonstração não está disponível nesta build");
+  storage.setItem(demoSessionKey, "active");
+}
+
 export function isDemoSessionActive(): boolean {
   if (!demoModeAvailable || typeof window === "undefined") return false;
-  return window.sessionStorage.getItem(demoSessionKey) === "active";
+  return hasAuthorizedDemoSession(demoModeAvailable, window.sessionStorage);
 }
 
 export function startDemoSession(): void {
   if (!demoModeAvailable || typeof window === "undefined") {
     throw new Error("O modo demonstração não está disponível nesta build");
   }
-  window.sessionStorage.setItem(demoSessionKey, "active");
+  createAuthorizedDemoSession(demoModeAvailable, window.sessionStorage);
 }
 
 export function endDemoSession(): void {

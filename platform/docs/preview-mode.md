@@ -23,6 +23,8 @@ VITE_ATENDEIA_STAGE=preview
 VITE_ATENDEIA_PREVIEW=true
 ```
 
+O adaptador de hospedagem visual na raiz do projeto usa `scripts/build-site-preview.sh`, que declara essas três autorizações explicitamente antes de executar a mesma verificação de segurança. Esse adaptador existe somente para o Site demonstrativo publicado. O produto canônico e o comando `build:production` permanecem no estágio `production`, com autenticação real exclusiva.
+
 O script `scripts/assert-preview-safety.mjs` interrompe a build se a flag pública de demonstração for ligada com o estágio `production` ou se os estágios público e privado divergirem.
 
 No servidor de desenvolvimento, o script `dev` declara o estágio `development`. O botão aparece somente quando a verificação de saúde do backend falha.
@@ -38,4 +40,4 @@ No servidor de desenvolvimento, o script `dev` declara o estágio `development`.
 
 ## Publicação de produção
 
-Não definir as variáveis de Preview. A build padrão executa a proteção em modo `production`, e `canEnableDemoMode` retorna `false` mesmo que alguém tente criar manualmente a chave de sessão no navegador.
+No produto canônico, não definir as variáveis de Preview. Na raiz do adaptador visual, usar `npm run build:production`. A proteção executa em modo `production`, e `canEnableDemoMode` retorna `false` mesmo que alguém tente criar manualmente a chave de sessão no navegador.

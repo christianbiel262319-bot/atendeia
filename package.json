@@ -8,9 +8,10 @@
   "scripts": {
     "install:ci": "bash scripts/install-ci.sh",
     "dev": "ATENDEIA_DEPLOYMENT_STAGE=development VITE_ATENDEIA_STAGE=development VITE_ATENDEIA_PREVIEW=true WRANGLER_LOG_PATH=.wrangler/wrangler.log vite",
-    "build": "bash scripts/build-verified.sh",
+    "build": "bash scripts/build-site-preview.sh",
+    "build:production": "ATENDEIA_DEPLOYMENT_STAGE=production VITE_ATENDEIA_STAGE=production VITE_ATENDEIA_PREVIEW=false bash scripts/build-verified.sh",
     "start": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext start",
-    "test": "npm run build && node --test tests/rendered-html.test.mjs",
+    "test": "npm run build && node --test tests/*.test.mjs",
     "validate:artifact": "bash scripts/validate-artifact.sh",
     "lint": "bash scripts/sites-env.sh -- eslint . --ignore-pattern dist --ignore-pattern .next",
     "test:preview-safety": "node scripts/assert-preview-safety.mjs",
