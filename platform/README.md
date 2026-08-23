@@ -1,7 +1,8 @@
 # AtendeIA Platform
 
 Implementação modular do AtendeIA com aplicação React/Vite e API Node/Express,
-preparada para operação multi-tenant com PostgreSQL, Redis, filas e WebSocket.
+preparada para operação multi-tenant com PostgreSQL. Redis, filas e integrações
+externas são capacidades posteriores e ficam desligadas na homologação da Fase 1.
 
 ## Módulos implementados
 
@@ -30,11 +31,13 @@ O frontend possui um modo DEMO restrito a builds de desenvolvimento/prévia. Ele
 ## Desenvolvimento local
 
 1. Copie `.env.example` para `.env` e gere segredos fortes.
-2. Defina `POSTGRES_PASSWORD` e `REDIS_PASSWORD` no `.env`.
-3. Execute `docker compose up -d postgres redis`.
+2. Defina `POSTGRES_PASSWORD` no `.env`.
+3. Execute `docker compose up -d postgres`.
 4. Execute `npm install`, `npm run db:generate` e `npm run db:migrate`.
-5. Em terminais separados, execute `npm run dev:api`, `npm run dev:web` e
-   `npm run dev:worker --workspace @atendeia/api`.
+5. Em terminais separados, execute `npm run dev:api` e `npm run dev:web`.
+
+Consulte [Homologação real — Fase 1](docs/homologation-phase-1.md) para o teste
+com PostgreSQL e a separação entre DEMO, homologação e produção.
 
 O servidor expõe `GET /health`, a API versionada em `/v1` e WebSocket em
 `/realtime`. Para a pilha completa em contêineres, use `docker compose up --build`;
@@ -42,13 +45,13 @@ o serviço `migrate` aplica as migrações antes de iniciar API e worker.
 
 ## Administração inicial
 
-Depois de cadastrar uma conta real, promova explicitamente o primeiro operador:
+Depois de cadastrar e verificar uma conta real, promova explicitamente o primeiro operador:
 
 ```bash
-SUPER_ADMIN_EMAIL=operador@empresa.com npm run admin:promote
+npm run platform-owner:promote -- operador@empresa.com
 ```
 
-Nenhum plano ou cliente fictício é criado automaticamente. O Super Admin publica
+Nenhum plano ou cliente fictício é criado automaticamente. O Platform Owner publica
 o catálogo real antes de o billing aparecer para clientes.
 
 Consulte também [arquitetura](docs/architecture.md), [segurança](docs/security.md),

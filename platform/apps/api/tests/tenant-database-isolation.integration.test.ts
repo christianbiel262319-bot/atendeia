@@ -8,6 +8,7 @@ const migrationPaths = [
   "../prisma/migrations/20260819090000_auth_lifecycle/migration.sql",
   "../prisma/migrations/20260819100000_tenant_relational_guards/migration.sql",
   "../prisma/migrations/20260819110000_crm_knowledge_expansion/migration.sql",
+  "../prisma/migrations/20260823090000_platform_membership/migration.sql",
 ];
 
 beforeAll(async () => {
@@ -31,7 +32,7 @@ beforeAll(async () => {
     INSERT INTO "MediaAsset" ("id", "tenantId", "createdByUserId", "publicId", "secureUrl", "resourceType", "updatedAt") VALUES
       ('60000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000001', 'atendeia/a/image', 'https://res.cloudinary.com/test/image/upload/image.png', 'image', NOW());
   `);
-});
+}, 30_000);
 
 afterAll(async () => {
   await db.close();

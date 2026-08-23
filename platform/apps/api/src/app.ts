@@ -16,7 +16,7 @@ import { dashboardRouter } from "./modules/dashboard/dashboard.routes.js";
 import { conversationRouter } from "./modules/conversations/conversation.routes.js";
 import { crmRouter } from "./modules/crm/crm.routes.js";
 import { knowledgeRouter } from "./modules/knowledge/knowledge.routes.js";
-import { healthRouter } from "./modules/health/health.routes.js";
+import { healthRouter, readinessHandler } from "./modules/health/health.routes.js";
 import { mediaRouter } from "./modules/media/media.routes.js";
 import { superAdminRouter } from "./modules/super-admin/super-admin.routes.js";
 import { teamRouter } from "./modules/team/team.routes.js";
@@ -68,6 +68,7 @@ export function createApp() {
   app.use(cookieParser());
 
   app.use("/health", healthRouter);
+  app.get("/ready", readinessHandler);
   app.use("/v1/auth", authRouter);
   app.use("/v1/ai", aiRouter);
   app.use("/v1/billing", billingRouter);

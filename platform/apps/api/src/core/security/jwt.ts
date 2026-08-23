@@ -5,6 +5,7 @@ import { unauthorized } from "../errors/app-error.js";
 export type AccessTokenPayload = {
   sub: string;
   tenantId: string;
+  sid: string;
   role: string;
   type: "access";
   exp: number;
@@ -42,6 +43,7 @@ export function verifyAccessToken(token: string): AccessTokenPayload {
     payload.type !== "access" ||
     typeof payload.sub !== "string" ||
     typeof payload.tenantId !== "string" ||
+    typeof payload.sid !== "string" ||
     typeof payload.role !== "string" ||
     typeof payload.exp !== "number"
   ) {

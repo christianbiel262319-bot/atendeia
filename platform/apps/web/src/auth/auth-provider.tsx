@@ -163,7 +163,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await apiRequest<void>("/v1/auth/logout", {
         method: "POST",
-        authenticated: true,
         csrf: true,
       });
     } finally {

@@ -26,7 +26,7 @@ authRouter.post("/password/forgot", authenticationLimiter, asyncHandler(controll
 authRouter.post("/password/reset", authenticationLimiter, asyncHandler(controller.resetPassword.bind(controller)));
 authRouter.post("/email/confirm", authenticationLimiter, asyncHandler(controller.confirmEmail.bind(controller)));
 authRouter.post("/refresh", authenticationLimiter, asyncHandler(controller.refresh.bind(controller)));
-authRouter.post("/logout", asyncHandler(requireTenant), asyncHandler(controller.logout.bind(controller)));
+authRouter.post("/logout", asyncHandler(controller.logout.bind(controller)));
 authRouter.patch("/profile", asyncHandler(requireTenant), asyncHandler(controller.updateProfile.bind(controller)));
 authRouter.post("/password/change", asyncHandler(requireTenant), asyncHandler(controller.changePassword.bind(controller)));
 authRouter.post("/email/request", asyncHandler(requireTenant), asyncHandler(controller.requestEmailVerification.bind(controller)));

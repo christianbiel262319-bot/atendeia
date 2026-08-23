@@ -1,6 +1,11 @@
 import { logger } from "./config/logger.js";
+import { env } from "./config/env.js";
 import { disconnectDatabase } from "./infra/database/prisma.js";
 import { createWhatsAppWebhookWorker } from "./workers/whatsapp-webhook.worker.js";
+
+if (!env.EXTERNAL_INTEGRATIONS_ENABLED) {
+  throw new Error("O worker não pode iniciar enquanto integrações externas estiverem desativadas");
+}
 
 const { worker, connection, realtimePublisher } = createWhatsAppWebhookWorker();
 

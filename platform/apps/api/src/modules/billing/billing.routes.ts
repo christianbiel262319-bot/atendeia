@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { asyncHandler } from "../../core/http/async-handler.js";
+import { requireExternalIntegrations } from "../../core/http/external-integrations.js";
 import { requireRoles, requireTenant } from "../tenants/tenant.middleware.js";
 import { BillingController } from "./billing.controller.js";
 
@@ -12,10 +13,12 @@ billingRouter.get("/subscription", asyncHandler(controller.current.bind(controll
 billingRouter.post(
   "/checkout",
   requireRoles("OWNER", "ADMIN"),
+  requireExternalIntegrations,
   asyncHandler(controller.checkout.bind(controller)),
 );
 billingRouter.delete(
   "/subscription",
   requireRoles("OWNER", "ADMIN"),
+  requireExternalIntegrations,
   asyncHandler(controller.cancel.bind(controller)),
 );

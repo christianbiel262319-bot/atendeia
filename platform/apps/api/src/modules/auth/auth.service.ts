@@ -35,6 +35,18 @@ type IssuedSession = {
   expiresIn: number;
 };
 
+type SessionDraft = {
+  id: string;
+  familyId: string;
+  tokenHash: string;
+  csrfHash: string;
+  ipHash: string | null;
+  userAgentHash: string | null;
+  deviceLabel: string | null;
+  expiresAt: Date;
+  issued: IssuedSession;
+};
+
 export class AuthService {
   async me(context: TenantContext) {
     const membership = await prisma.membership.findUnique({
@@ -42,12 +54,27 @@ export class AuthService {
       select: {
         role: true,
         mfaEnabled: true,
-        user: { select: { id: true, email: true, fullName: true, isSuperAdmin: true, emailVerifiedAt: true } },
+        user: {
+          select: {
+            id: true,
+            email: true,
+            fullName: true,
+            emailVerifiedAt: true,
+            platformMembership: { select: { active: true, role: true } },
+          },
+        },
         tenant: { select: { id: true, name: true, slug: true, timezone: true } },
       },
     });
     if (!membership) throw unauthorized();
-    return membership;
+    const { platformMembership, ...user } = membership.user;
+    return {
+      ...membership,
+      user: {
+        ...user,
+        isSuperAdmin: Boolean(platformMembership?.active && platformMembership.role === "OWNER"),
+      },
+    };
   }
 
   async register(input: RegisterInput, fingerprint: RequestFingerprint) {
@@ -70,6 +97,22 @@ export class AuthService {
         data: { tenantId: tenant.id, userId: user.id, role: "OWNER" },
         select: { role: true },
       });
+      const session = createSessionDraft(user.id, tenant.id, membership.role, fingerprint);
+      await tx.refreshSession.create({
+        data: {
+          id: session.id,
+          tenantId: tenant.id,
+          userId: user.id,
+          familyId: session.familyId,
+          tokenHash: session.tokenHash,
+          csrfHash: session.csrfHash,
+          ipHash: session.ipHash,
+          userAgentHash: session.userAgentHash,
+          deviceLabel: session.deviceLabel,
+          expiresAt: session.expiresAt,
+        },
+      });
+      await tx.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
       await tx.auditLog.create({
         data: {
           tenantId: tenant.id,
@@ -81,21 +124,14 @@ export class AuthService {
           userAgentHash: fingerprint.userAgent ? keyedHash(fingerprint.userAgent) : null,
         },
       });
-      return { tenant, user, role: membership.role };
+      return { tenant, user, role: membership.role, session: session.issued };
     });
-
-    const session = await this.issueSession(
-      result.user.id,
-      result.tenant.id,
-      result.role,
-      fingerprint,
-    );
     const verification = await accountService.deliverEmailVerification({
       userId: result.user.id,
       email: result.user.email,
       fullName: result.user.fullName,
     });
-    return { ...result, session, emailVerification: verification };
+    return { ...result, emailVerification: verification };
   }
 
   async inspectInvitation(token: string) {
@@ -168,6 +204,22 @@ export class AuthService {
         },
         select: { role: true },
       });
+      const session = createSessionDraft(user.id, invitation.tenantId, membership.role, fingerprint);
+      await tx.refreshSession.create({
+        data: {
+          id: session.id,
+          tenantId: invitation.tenantId,
+          userId: user.id,
+          familyId: session.familyId,
+          tokenHash: session.tokenHash,
+          csrfHash: session.csrfHash,
+          ipHash: session.ipHash,
+          userAgentHash: session.userAgentHash,
+          deviceLabel: session.deviceLabel,
+          expiresAt: session.expiresAt,
+        },
+      });
+      await tx.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
       await tx.auditLog.create({
         data: {
           tenantId: invitation.tenantId,
@@ -179,14 +231,8 @@ export class AuthService {
           userAgentHash: fingerprint.userAgent ? keyedHash(fingerprint.userAgent) : null,
         },
       });
-      return { user, role: membership.role };
+      return { user, role: membership.role, session: session.issued };
     });
-    const session = await this.issueSession(
-      result.user.id,
-      invitation.tenantId,
-      result.role,
-      fingerprint,
-    );
     return {
       ...result,
       tenant: {
@@ -194,7 +240,6 @@ export class AuthService {
         name: invitation.tenant.name,
         slug: invitation.tenant.slug,
       },
-      session,
     };
   }
 
@@ -344,9 +389,20 @@ export class AuthService {
 
     const membership = await prisma.membership.findUnique({
       where: { tenantId_userId: { tenantId: current.tenantId, userId: current.userId } },
-      select: { active: true, role: true },
+      select: {
+        active: true,
+        role: true,
+        tenant: { select: { status: true } },
+        user: { select: { status: true } },
+      },
     });
-    if (!membership?.active) throw forbidden("Associação com a empresa foi desativada");
+    if (
+      !membership?.active ||
+      membership.tenant.status !== "ACTIVE" ||
+      membership.user.status !== "ACTIVE"
+    ) {
+      throw forbidden("Sessão indisponível para esta conta ou empresa");
+    }
 
     const nextRefreshToken = secureToken();
     const nextCsrfToken = secureToken(32);
@@ -385,6 +441,7 @@ export class AuthService {
       accessToken: signAccessToken({
         sub: current.userId,
         tenantId: current.tenantId,
+        sid: nextId,
         role: membership.role,
       }),
       refreshToken: nextRefreshToken,
@@ -400,16 +457,37 @@ export class AuthService {
   ): Promise<void> {
     if (refreshToken) {
       const tokenHash = sha256(refreshToken);
-      await prisma.refreshSession.updateMany({
-        where: {
-          tokenHash,
-          revokedAt: null,
-          ...(context ? { tenantId: context.tenantId, userId: context.userId } : {}),
-        },
-        data: { revokedAt: new Date(), revokeReason: "LOGOUT" },
+      const stored = await prisma.refreshSession.findUnique({
+        where: { tokenHash },
+        select: { id: true, tenantId: true, userId: true, revokedAt: true },
       });
+      if (stored && !stored.revokedAt) {
+        await prisma.$transaction(async (tx) => {
+          const revoked = await tx.refreshSession.updateMany({
+            where: {
+              id: stored.id,
+              revokedAt: null,
+              ...(context ? { tenantId: context.tenantId, userId: context.userId } : {}),
+            },
+            data: { revokedAt: new Date(), revokeReason: "LOGOUT" },
+          });
+          if (revoked.count === 1) {
+            await tx.auditLog.create({
+              data: {
+                tenantId: stored.tenantId,
+                actorUserId: stored.userId,
+                action: "auth.logout",
+                resourceType: "session",
+                resourceId: stored.id,
+                ipHash: fingerprint.ip ? keyedHash(fingerprint.ip) : null,
+                userAgentHash: fingerprint.userAgent ? keyedHash(fingerprint.userAgent) : null,
+              },
+            });
+          }
+        });
+      }
     }
-    if (context) {
+    if (!refreshToken && context) {
       await this.audit(context.tenantId, context.userId, "auth.logout", fingerprint);
     }
   }
@@ -483,33 +561,27 @@ export class AuthService {
     role: MembershipRole,
     fingerprint: RequestFingerprint,
   ): Promise<IssuedSession> {
-    const refreshToken = secureToken();
-    const csrfToken = secureToken(32);
-    const expiresAt = new Date(Date.now() + refreshLifetimeMs);
+    const session = createSessionDraft(userId, tenantId, role, fingerprint);
 
     await prisma.$transaction([
       prisma.refreshSession.create({
         data: {
+          id: session.id,
           tenantId,
           userId,
-          familyId: randomUUID(),
-          tokenHash: sha256(refreshToken),
-          csrfHash: sha256(csrfToken),
-          ipHash: fingerprint.ip ? keyedHash(fingerprint.ip) : null,
-          userAgentHash: fingerprint.userAgent ? keyedHash(fingerprint.userAgent) : null,
-          deviceLabel: describeDevice(fingerprint.userAgent),
-          expiresAt,
+          familyId: session.familyId,
+          tokenHash: session.tokenHash,
+          csrfHash: session.csrfHash,
+          ipHash: session.ipHash,
+          userAgentHash: session.userAgentHash,
+          deviceLabel: session.deviceLabel,
+          expiresAt: session.expiresAt,
         },
       }),
       prisma.user.update({ where: { id: userId }, data: { lastLoginAt: new Date() } }),
     ]);
 
-    return {
-      accessToken: signAccessToken({ sub: userId, tenantId, role }),
-      refreshToken,
-      csrfToken,
-      expiresIn: 900,
-    };
+    return session.issued;
   }
 
   private async audit(
@@ -557,6 +629,33 @@ export class AuthService {
       })),
     });
   }
+}
+
+function createSessionDraft(
+  userId: string,
+  tenantId: string,
+  role: MembershipRole,
+  fingerprint: RequestFingerprint,
+): SessionDraft {
+  const id = randomUUID();
+  const refreshToken = secureToken();
+  const csrfToken = secureToken(32);
+  return {
+    id,
+    familyId: randomUUID(),
+    tokenHash: sha256(refreshToken),
+    csrfHash: sha256(csrfToken),
+    ipHash: fingerprint.ip ? keyedHash(fingerprint.ip) : null,
+    userAgentHash: fingerprint.userAgent ? keyedHash(fingerprint.userAgent) : null,
+    deviceLabel: describeDevice(fingerprint.userAgent),
+    expiresAt: new Date(Date.now() + refreshLifetimeMs),
+    issued: {
+      accessToken: signAccessToken({ sub: userId, tenantId, sid: id, role }),
+      refreshToken,
+      csrfToken,
+      expiresIn: 900,
+    },
+  };
 }
 
 function slugify(value: string): string {

@@ -35,20 +35,21 @@ export class TenantService {
   }
 
   capabilities() {
+    const external = env.EXTERNAL_INTEGRATIONS_ENABLED;
     return {
-      ai: { configured: Boolean(env.OPENAI_API_KEY) },
+      ai: { configured: external && Boolean(env.OPENAI_API_KEY) },
       whatsapp: {
-        configured: Boolean(env.META_APP_SECRET && env.WHATSAPP_WEBHOOK_VERIFY_TOKEN),
+        configured: external && Boolean(env.META_APP_SECRET && env.WHATSAPP_WEBHOOK_VERIFY_TOKEN),
       },
       billing: {
-        STRIPE: Boolean(env.STRIPE_SECRET_KEY && env.STRIPE_WEBHOOK_SECRET),
-        MERCADO_PAGO: Boolean(
+        STRIPE: external && Boolean(env.STRIPE_SECRET_KEY && env.STRIPE_WEBHOOK_SECRET),
+        MERCADO_PAGO: external && Boolean(
           env.MERCADO_PAGO_ACCESS_TOKEN && env.MERCADO_PAGO_WEBHOOK_SECRET,
         ),
-        ASAAS: Boolean(env.ASAAS_API_KEY && env.ASAAS_WEBHOOK_TOKEN),
+        ASAAS: external && Boolean(env.ASAAS_API_KEY && env.ASAAS_WEBHOOK_TOKEN),
       },
       media: {
-        configured: Boolean(
+        configured: external && Boolean(
           env.CLOUDINARY_CLOUD_NAME && env.CLOUDINARY_API_KEY && env.CLOUDINARY_API_SECRET,
         ),
       },

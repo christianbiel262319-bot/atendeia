@@ -11,12 +11,16 @@ import { connectRedis, disconnectRedis } from "./infra/redis/redis.js";
 const app = createApp();
 const server = createServer(app);
 const websocketServer = attachWebSocketServer(server);
-const realtimeSubscriber = createRealtimeSubscriber(websocketServer);
+const realtimeSubscriber = env.EXTERNAL_INTEGRATIONS_ENABLED
+  ? createRealtimeSubscriber(websocketServer)
+  : null;
 
 async function start(): Promise<void> {
   await prisma.$queryRaw`SELECT 1`;
-  await connectRedis();
-  await connectRealtimeSubscriber(realtimeSubscriber);
+  if (realtimeSubscriber) {
+    await connectRedis();
+    await connectRealtimeSubscriber(realtimeSubscriber);
+  }
   server.listen(env.PORT, "0.0.0.0", () => {
     logger.info({ port: env.PORT }, "AtendeIA API listening");
   });
@@ -26,9 +30,11 @@ async function shutdown(signal: string): Promise<void> {
   logger.info({ signal }, "Graceful shutdown started");
   server.close();
   websocketServer.close();
-  await realtimeSubscriber.quit();
-  await closeQueues();
-  await disconnectRedis();
+  if (realtimeSubscriber) {
+    await realtimeSubscriber.quit();
+    await closeQueues();
+    await disconnectRedis();
+  }
   await disconnectDatabase();
   logger.info("Graceful shutdown completed");
 }

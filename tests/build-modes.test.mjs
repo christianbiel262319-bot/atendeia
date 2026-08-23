@@ -38,6 +38,16 @@ test("a production build remains real-auth-only", () => {
   assert.match(result.stdout, /real-auth-only \(production\)/);
 });
 
+test("a homologation build uses only real authentication", () => {
+  const result = safetyCheck({
+    ATENDEIA_DEPLOYMENT_STAGE: "homologation",
+    VITE_ATENDEIA_STAGE: "homologation",
+    VITE_ATENDEIA_PREVIEW: "false",
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /real-auth-only \(homologation\)/);
+});
+
 test("the build guard rejects a DEMO flag in production", () => {
   const result = safetyCheck({
     ATENDEIA_DEPLOYMENT_STAGE: "production",
@@ -45,5 +55,14 @@ test("the build guard rejects a DEMO flag in production", () => {
     VITE_ATENDEIA_PREVIEW: "true",
   });
   assert.equal(result.status, 1);
-  assert.match(result.stderr, /demo authentication bypass cannot be enabled in production/);
+  assert.match(result.stderr, /demo authentication bypass cannot be enabled outside development\/preview/);
+});
+
+test("the build guard rejects a DEMO flag in homologation", () => {
+  const result = safetyCheck({
+    ATENDEIA_DEPLOYMENT_STAGE: "homologation",
+    VITE_ATENDEIA_STAGE: "homologation",
+    VITE_ATENDEIA_PREVIEW: "true",
+  });
+  assert.equal(result.status, 1);
 });

@@ -1,7 +1,7 @@
 const stage = process.env.ATENDEIA_DEPLOYMENT_STAGE ?? "production";
 const publicStage = process.env.VITE_ATENDEIA_STAGE ?? stage;
 const previewEnabled = process.env.VITE_ATENDEIA_PREVIEW === "true";
-const allowedStages = new Set(["development", "preview", "production"]);
+const allowedStages = new Set(["development", "preview", "homologation", "production"]);
 
 if (!allowedStages.has(stage) || !allowedStages.has(publicStage)) {
   console.error("AtendeIA build blocked: invalid deployment stage.");
@@ -14,7 +14,7 @@ if (publicStage !== stage) {
 }
 
 if (previewEnabled && stage !== "development" && stage !== "preview") {
-  console.error("AtendeIA build blocked: demo authentication bypass cannot be enabled in production.");
+  console.error("AtendeIA build blocked: demo authentication bypass cannot be enabled outside development/preview.");
   process.exit(1);
 }
 

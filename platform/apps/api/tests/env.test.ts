@@ -22,5 +22,14 @@ describe("environment configuration", () => {
     expect(parsed.META_APP_SECRET).toBeUndefined();
     expect(parsed.OPENAI_API_KEY).toBeUndefined();
     expect(parsed.STRIPE_SECRET_KEY).toBeUndefined();
+    expect(parsed.EXTERNAL_INTEGRATIONS_ENABLED).toBe(false);
+  });
+
+  it("rejeita cookie inseguro quando o estágio é produção", () => {
+    expect(() => parseEnvironment({
+      ...process.env,
+      ATENDEIA_DEPLOYMENT_STAGE: "production",
+      COOKIE_SECURE: "false",
+    })).toThrow(/COOKIE_SECURE/u);
   });
 });

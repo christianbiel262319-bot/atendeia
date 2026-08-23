@@ -1,11 +1,13 @@
 import express, { Router } from "express";
 import { asyncHandler } from "../../core/http/async-handler.js";
+import { requireExternalIntegrations } from "../../core/http/external-integrations.js";
 import { requireRoles, requireTenant } from "../tenants/tenant.middleware.js";
 import { WhatsAppController } from "./whatsapp.controller.js";
 
 const controller = new WhatsAppController();
 
 export const whatsappWebhookRouter = Router();
+whatsappWebhookRouter.use(requireExternalIntegrations);
 whatsappWebhookRouter.get("/", controller.verifyWebhook.bind(controller));
 whatsappWebhookRouter.post(
   "/",
@@ -19,5 +21,6 @@ whatsappRouter.get("/connection", asyncHandler(controller.getConnection.bind(con
 whatsappRouter.post(
   "/connection",
   requireRoles("OWNER", "ADMIN"),
+  requireExternalIntegrations,
   asyncHandler(controller.connect.bind(controller)),
 );

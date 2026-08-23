@@ -4,7 +4,7 @@ import { AppError, forbidden } from "../../core/errors/app-error.js";
 import { encryptSecret, sha256 } from "../../core/security/crypto.js";
 import type { TenantContext } from "../../core/tenant/tenant-context.js";
 import { prisma } from "../../infra/database/prisma.js";
-import { webhookQueue } from "../../infra/queues/queues.js";
+import { getWebhookQueue } from "../../infra/queues/queues.js";
 import { MetaWhatsAppClient } from "./meta.client.js";
 import { metaWebhookSchema } from "./whatsapp.schemas.js";
 
@@ -150,7 +150,7 @@ export class WhatsAppService {
             ignored += 1;
             continue;
           }
-          await webhookQueue.add(
+          await getWebhookQueue().add(
             event.eventType,
             { tenantId: connection.tenantId, webhookEventId: stored.id },
             { jobId: stored.id },

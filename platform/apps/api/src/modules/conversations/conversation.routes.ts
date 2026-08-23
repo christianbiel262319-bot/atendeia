@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { asyncHandler } from "../../core/http/async-handler.js";
+import { requireExternalIntegrations } from "../../core/http/external-integrations.js";
 import { requireRoles, requireTenant } from "../tenants/tenant.middleware.js";
 import { ConversationController } from "./conversation.controller.js";
 
@@ -12,6 +13,7 @@ conversationRouter.get("/:id", asyncHandler(controller.get.bind(controller)));
 conversationRouter.post(
   "/:id/messages",
   requireRoles("OWNER", "ADMIN", "MANAGER", "AGENT"),
+  requireExternalIntegrations,
   asyncHandler(controller.send.bind(controller)),
 );
 conversationRouter.post(

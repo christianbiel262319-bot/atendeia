@@ -25,6 +25,13 @@ export class AiService {
     context: TenantContext,
     input: z.infer<typeof aiConfigurationSchema>,
   ) {
+    if (input.enabled && !env.EXTERNAL_INTEGRATIONS_ENABLED) {
+      throw new AppError(
+        503,
+        "EXTERNAL_INTEGRATIONS_DISABLED",
+        "A IA externa está desativada neste ambiente",
+      );
+    }
     if (input.enabled && !env.OPENAI_API_KEY) {
       throw new AppError(
         503,
@@ -69,6 +76,16 @@ export class AiService {
         confidence: 0,
         needsHuman: true,
         reason: "AI_DISABLED",
+      };
+    }
+
+    if (!env.EXTERNAL_INTEGRATIONS_ENABLED) {
+      return {
+        answer: transferMessage,
+        canAnswer: false,
+        confidence: 0,
+        needsHuman: true,
+        reason: "EXTERNAL_INTEGRATIONS_DISABLED",
       };
     }
 

@@ -53,11 +53,25 @@ async function authorizeUpgrade(
     if (!credential) return rejectUpgrade(socket, 401);
 
     const payload = verifyAccessToken(credential.slice("token.".length));
-    const membership = await prisma.membership.findUnique({
-      where: { tenantId_userId: { tenantId: payload.tenantId, userId: payload.sub } },
-      select: { active: true, tenant: { select: { status: true } } },
-    });
-    if (!membership?.active || membership.tenant.status !== "ACTIVE") return rejectUpgrade(socket, 403);
+    const [membership, session] = await Promise.all([
+      prisma.membership.findUnique({
+        where: { tenantId_userId: { tenantId: payload.tenantId, userId: payload.sub } },
+        select: { active: true, tenant: { select: { status: true } } },
+      }),
+      prisma.refreshSession.findFirst({
+        where: {
+          id: payload.sid,
+          tenantId: payload.tenantId,
+          userId: payload.sub,
+          revokedAt: null,
+          expiresAt: { gt: new Date() },
+        },
+        select: { id: true },
+      }),
+    ]);
+    if (!session || !membership?.active || membership.tenant.status !== "ACTIVE") {
+      return rejectUpgrade(socket, 403);
+    }
 
     websocketServer.handleUpgrade(request, socket, head, (websocket) => {
       const tenantSocket = websocket as TenantSocket;

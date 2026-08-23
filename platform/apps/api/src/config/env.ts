@@ -12,6 +12,10 @@ const optionalSecret = (minimum = 16) =>
 
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+  ATENDEIA_DEPLOYMENT_STAGE: z
+    .enum(["development", "test", "homologation", "production"])
+    .default("production"),
+  EXTERNAL_INTEGRATIONS_ENABLED: booleanFromString.default(false),
   PORT: z.coerce.number().int().min(1).max(65535).default(4000),
   APP_ORIGIN: z.url(),
   DATABASE_URL: z.string().min(1),
@@ -47,6 +51,14 @@ const envSchema = z.object({
     (value) => (value === "" ? undefined : value),
     z.email().optional(),
   ),
+}).superRefine((value, context) => {
+  if (value.ATENDEIA_DEPLOYMENT_STAGE === "production" && !value.COOKIE_SECURE) {
+    context.addIssue({
+      code: "custom",
+      path: ["COOKIE_SECURE"],
+      message: "COOKIE_SECURE deve permanecer true em produção",
+    });
+  }
 });
 
 export type Environment = z.infer<typeof envSchema>;

@@ -17,7 +17,8 @@
    A migration de guardas multi-tenant interrompe o deploy caso detecte uma
    relação cruzada preexistente, exigindo saneamento explícito antes de continuar.
 4. Inicie uma API, um worker e o frontend; depois escale API/workers horizontalmente.
-5. Configure health checks em `/health/live` e `/health/ready`.
+5. Configure liveness em `/health` e readiness em `/ready` (os aliases
+   `/health/live` e `/health/ready` permanecem disponíveis).
 6. Cadastre URLs de webhook e valide um evento real de cada provedor em sandbox.
 7. Promova o primeiro Super Admin e publique planos reais.
 

@@ -19,6 +19,8 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
+      ATENDEIA_DEPLOYMENT_STAGE: ${ATENDEIA_DEPLOYMENT_STAGE:-production}
+      EXTERNAL_INTEGRATIONS_ENABLED: ${EXTERNAL_INTEGRATIONS_ENABLED:-false}
       PORT: 4000
       APP_ORIGIN: ${APP_ORIGIN:?Defina APP_ORIGIN no arquivo .env}
       DATABASE_URL: postgresql://atendeia:${POSTGRES_PASSWORD}@postgres:5432/atendeia?schema=public
@@ -52,8 +54,6 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
-      redis:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:4000/health/live"]
       interval: 10s
@@ -61,6 +61,7 @@ services:
       retries: 5
 
   worker:
+    profiles: ["integrations"]
     build:
       context: .
       dockerfile: apps/api/Dockerfile
@@ -68,6 +69,8 @@ services:
     command: ["node", "apps/api/dist/src/worker.js"]
     environment:
       NODE_ENV: production
+      ATENDEIA_DEPLOYMENT_STAGE: ${ATENDEIA_DEPLOYMENT_STAGE:-production}
+      EXTERNAL_INTEGRATIONS_ENABLED: ${EXTERNAL_INTEGRATIONS_ENABLED:-false}
       PORT: 4000
       APP_ORIGIN: ${APP_ORIGIN:?Defina APP_ORIGIN no arquivo .env}
       DATABASE_URL: postgresql://atendeia:${POSTGRES_PASSWORD}@postgres:5432/atendeia?schema=public
@@ -121,6 +124,7 @@ services:
       retries: 10
 
   redis:
+    profiles: ["integrations"]
     image: redis:7.4-alpine
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?Defina REDIS_PASSWORD no arquivo .env}"]

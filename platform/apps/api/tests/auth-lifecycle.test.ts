@@ -7,6 +7,7 @@ import {
 } from "../src/modules/auth/auth.schemas.js";
 import { describeDevice, maskEmail } from "../src/modules/auth/auth.service.js";
 import { isValidTimeZone } from "../src/modules/tenants/tenant.schemas.js";
+import { signAccessToken, verifyAccessToken } from "../src/core/security/jwt.js";
 
 describe("ciclo de autenticação", () => {
   it("mascara o destinatário de convites", () => {
@@ -39,5 +40,15 @@ describe("ciclo de autenticação", () => {
 
   it("escapa conteúdo inserido em e-mail HTML", () => {
     expect(escapeHtml('<script>alert("x")</script>')).toBe("&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt;");
+  });
+
+  it("vincula o access token a uma sessão persistida", () => {
+    const token = signAccessToken({
+      sub: "10000000-0000-4000-8000-000000000001",
+      tenantId: "00000000-0000-4000-8000-000000000001",
+      sid: "90000000-0000-4000-8000-000000000001",
+      role: "OWNER",
+    });
+    expect(verifyAccessToken(token).sid).toBe("90000000-0000-4000-8000-000000000001");
   });
 });

@@ -19,11 +19,24 @@ export async function requireTenant(
     const payload = verifyAccessToken(authorization.slice(7));
     const tenantId = assertTenantMatch(payload.tenantId, request.get("x-tenant-id") ?? undefined);
 
-    const membership = await prisma.membership.findUnique({
-      where: { tenantId_userId: { tenantId, userId: payload.sub } },
-      select: { active: true, role: true, tenant: { select: { status: true } } },
-    });
+    const [membership, session] = await Promise.all([
+      prisma.membership.findUnique({
+        where: { tenantId_userId: { tenantId, userId: payload.sub } },
+        select: { active: true, role: true, tenant: { select: { status: true } } },
+      }),
+      prisma.refreshSession.findFirst({
+        where: {
+          id: payload.sid,
+          tenantId,
+          userId: payload.sub,
+          revokedAt: null,
+          expiresAt: { gt: new Date() },
+        },
+        select: { id: true },
+      }),
+    ]);
 
+    if (!session) throw unauthorized("Sessão revogada ou expirada");
     if (!membership?.active || membership.tenant.status !== "ACTIVE") {
       throw forbidden("Usuário sem associação ativa com a empresa");
     }

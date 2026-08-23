@@ -109,6 +109,10 @@ enum WebhookStatus {
   IGNORED
 }
 
+enum PlatformRole {
+  OWNER
+}
+
 model Tenant {
   id                    String                  @id @default(uuid()) @db.Uuid
   name                  String                  @db.VarChar(160)
@@ -164,8 +168,37 @@ model User {
   mediaAssets     MediaAsset[]     @relation("MediaCreator")
   passwordResetTokens PasswordResetToken[]
   emailVerificationTokens EmailVerificationToken[]
+  platformMembership PlatformMembership?
+  platformAuditActions PlatformAuditLog[] @relation("PlatformAuditActor")
+  platformAuditTargets PlatformAuditLog[] @relation("PlatformAuditTarget")
 
   @@index([status])
+}
+
+model PlatformMembership {
+  id        String       @id @default(uuid()) @db.Uuid
+  userId    String       @unique @db.Uuid
+  role      PlatformRole @default(OWNER)
+  active    Boolean      @default(true)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([role, active])
+}
+
+model PlatformAuditLog {
+  id           String   @id @default(uuid()) @db.Uuid
+  actorUserId  String?  @db.Uuid
+  targetUserId String   @db.Uuid
+  action       String   @db.VarChar(100)
+  metadata     Json?
+  createdAt    DateTime @default(now())
+  actor        User?    @relation("PlatformAuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  target       User     @relation("PlatformAuditTarget", fields: [targetUserId], references: [id], onDelete: Restrict)
+
+  @@index([targetUserId, createdAt])
+  @@index([action, createdAt])
 }
 
 model Membership {

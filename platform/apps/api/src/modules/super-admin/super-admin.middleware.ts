@@ -8,17 +8,27 @@ export async function requireSuperAdmin(
   next: NextFunction,
 ): Promise<void> {
   try {
-    const user = request.tenant
-      ? await prisma.user.findUnique({
-          where: { id: request.tenant.userId },
-          select: { isSuperAdmin: true, status: true },
+    const membership = request.tenant
+      ? await prisma.platformMembership.findUnique({
+          where: { userId: request.tenant.userId },
+          select: { active: true, role: true, user: { select: { status: true } } },
         })
       : null;
-    if (!user?.isSuperAdmin || user.status !== "ACTIVE") {
+    if (!hasPlatformOwnerAccess(membership)) {
       throw forbidden("Acesso restrito à administração da plataforma");
     }
     next();
   } catch (error) {
     next(error);
   }
+}
+
+export function hasPlatformOwnerAccess(
+  membership: { active: boolean; role: string; user: { status: string } } | null,
+): boolean {
+  return Boolean(
+    membership?.active &&
+    membership.role === "OWNER" &&
+    membership.user.status === "ACTIVE",
+  );
 }

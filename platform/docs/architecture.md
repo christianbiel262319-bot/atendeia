@@ -20,12 +20,12 @@ Tokens de refresh e códigos de uso único são armazenados apenas como hash. Cr
 
 ## Módulos e fronteiras
 
-- `auth`, `tenants` e `team`: identidade, sessão, MFA, papéis e convites;
+- `auth`, `tenants` e `team`: identidade, sessão persistida, MFA, papéis e convites;
 - `whatsapp`, `ai` e `knowledge`: ingestão, recuperação de contexto e resposta segura;
 - `conversations` e `crm`: operação humana e relacionamento;
 - `billing/providers`: contrato comum com adaptadores Stripe, Mercado Pago e Asaas;
 - `media`: assinatura e registro de ativos Cloudinary por tenant;
-- `super-admin`: consultas globais deliberadas atrás de privilégio separado.
+- `super-admin`: consultas globais atrás de `PlatformMembership`, separada de qualquer papel empresarial.
 
 `Plan` é catálogo global da plataforma; todos os recursos pertencentes a uma
 empresa, inclusive assinaturas, pagamentos, eventos e mídia, carregam `tenantId`.
