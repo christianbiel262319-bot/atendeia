@@ -17,6 +17,17 @@ describe("API local do modo demonstração", () => {
     expect(result.data.onboarding.total).toBe(Object.keys(result.data.onboarding.steps).length);
   });
 
+  it("mantém MFA e sessões DEMO coerentes com o perfil demonstrativo", async () => {
+    const [team, sessions] = await Promise.all([
+      demoApiRequest<{ data: Array<{ user: { id: string }; mfaEnabled: boolean }> }>("/v1/team"),
+      demoApiRequest<{ data: Array<{ current: boolean; expiresAt: string }> }>("/v1/auth/sessions"),
+    ]);
+    const administrator = team.data.find((member) => member.user.id === "00000000-0000-4000-8000-00000000d001");
+    expect(administrator?.mfaEnabled).toBe(false);
+    expect(sessions.data.filter((session) => session.current)).toHaveLength(1);
+    expect(sessions.data.every((session) => Date.parse(session.expiresAt) > Date.parse("2026-08-23T00:00:00.000Z"))).toBe(true);
+  });
+
   it("mantém filtros visuais utilizáveis", async () => {
     const result = await demoApiRequest<{ data: Array<{ status: string }> }>("/v1/conversations?status=RESOLVED");
     expect(result.data).toHaveLength(1);

@@ -169,7 +169,7 @@ export function AutomationPage() {
           <form className="mt-5 grid gap-4" onSubmit={(event) => void aiForm.handleSubmit((values) => saveAi.mutate(values))(event)}>
             <section className="rounded-xl border border-app-line p-4">
               <SectionHeading title="Respostas automáticas" description="Controle quando a assistente pode responder clientes." />
-              <label className="mt-4 flex items-start justify-between gap-4"><span><strong className="block text-sm">IA ligada</strong><span className="mt-1 block text-xs leading-5 text-slate-500">Ative somente depois de revisar o conhecimento e testar as respostas.</span></span><input className="mt-0.5 size-5 shrink-0 accent-emerald-700" type="checkbox" disabled={capabilities.isLoading || (!isDemoMode && !capabilities.data?.ai.configured && !aiEnabled)} {...aiForm.register("enabled")} /></label>
+              <label className="mt-4 flex items-start justify-between gap-4"><span><strong className="block text-sm">{isDemoMode ? "IA ligada — simulação DEMO" : "IA ligada"}</strong><span className="mt-1 block text-xs leading-5 text-slate-500">{isDemoMode ? "A resposta exibida é local e demonstrativa; nenhuma chamada à OpenAI será feita." : "Ative somente depois de revisar o conhecimento e testar as respostas."}</span></span><input className="mt-0.5 size-5 shrink-0 accent-emerald-700" type="checkbox" disabled={capabilities.isLoading || (!isDemoMode && !capabilities.data?.ai.configured && !aiEnabled)} {...aiForm.register("enabled")} /></label>
             </section>
 
             <section className="rounded-xl border border-app-line p-4">

@@ -262,8 +262,8 @@ function resolveDemoRequest<T>(path: string, init: RequestInit): T {
   if (pathname === "/v1/auth/capabilities") return response<T>({ emailDelivery: false });
   if (pathname === "/v1/auth/sessions") {
     return response<T>([
-      { id: "demo-session-001", deviceLabel: "Navegador da prévia — DEMO", createdAt: "2026-08-19T12:00:00.000Z", lastUsedAt: "2026-08-19T18:42:00.000Z", expiresAt: "2026-08-20T12:00:00.000Z", current: true },
-      { id: "demo-session-002", deviceLabel: "Android demonstrativo — DEMO", createdAt: "2026-08-18T12:00:00.000Z", lastUsedAt: "2026-08-18T16:00:00.000Z", expiresAt: "2026-08-25T12:00:00.000Z", current: false },
+      { id: "demo-session-001", deviceLabel: "Navegador da prévia — DEMO", createdAt: "2026-08-19T12:00:00.000Z", lastUsedAt: "2026-08-23T11:30:00.000Z", expiresAt: "2027-08-23T12:00:00.000Z", current: true },
+      { id: "demo-session-002", deviceLabel: "Android demonstrativo — DEMO", createdAt: "2026-08-18T12:00:00.000Z", lastUsedAt: "2026-08-22T16:00:00.000Z", expiresAt: "2027-08-22T12:00:00.000Z", current: false },
     ]);
   }
 
