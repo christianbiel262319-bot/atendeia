@@ -29,6 +29,28 @@ O Sites hospeda o preview demonstrativo, mas não executa a API Node/PostgreSQL
 por conexão TCP. A homologação real precisa de um runtime de backend e de um
 PostgreSQL separados do preview.
 
+## Entrega externa necessária para a Fase 1B
+
+O PostgreSQL deve ser criado em um projeto/instância exclusivo de homologação,
+com um banco cujo nome contenha `test`, `homolog` ou `hml`. Guarde a conexão TLS
+direta nos seguintes cofres, nunca no repositório ou no frontend:
+
+- `DATABASE_URL`: ambiente/secrets do runtime Node da API;
+- `ATENDEIA_ACCEPTANCE_DATABASE_URL`: secret do terminal administrativo ou CI
+  que executará `npm run test:postgresql`.
+
+Durante esta fase os dois nomes podem apontar para o mesmo banco exclusivo de
+homologação. O runner copia a URL de aceitação para `DATABASE_URL` apenas no
+processo isolado do teste. Não envie a connection string por chat e não a
+configure nas variáveis do Sites: o Sites continua reservado ao preview DEMO e
+não oferece o runtime Node/TCP exigido por esta API.
+
+O runtime da API precisa expor `/health` e `/ready`, executar o comando de
+migration antes da primeira inicialização e guardar os demais segredos listados
+abaixo no próprio cofre. O frontend de homologação deve encaminhar `/v1`,
+`/health`, `/ready` e `/realtime` para esse runtime no mesmo domínio/reverse
+proxy. Nenhum desses passos permite fallback DEMO.
+
 ## Teste de aceitação PostgreSQL
 
 Use exclusivamente um banco descartável cujo nome contenha `test`, `homolog` ou
@@ -61,7 +83,11 @@ npm run platform-owner:promote -- usuario@example.test
 
 A autorização é persistida em `PlatformMembership`, separada das funções da
 empresa, e a promoção é registrada em `PlatformAuditLog`. Não existe promoção
-por regra de e-mail no frontend.
+por regra de e-mail no frontend ou nos fluxos de cadastro/login.
+
+`PLATFORM_OWNER_EMAIL` é somente a alternativa server-side ao argumento desse
+comando. Definir a variável, por si só, não concede privilégio. O valor só é
+consumido quando um operador executa manualmente `platform-owner:promote`.
 
 ## Variáveis necessárias (nomes somente)
 
@@ -71,7 +97,8 @@ por regra de e-mail no frontend.
 - `PORT`
 - `APP_ORIGIN`
 - `DATABASE_URL`
-- `REDIS_URL` (mantida para compatibilidade, sem conexão nesta fase)
+- `REDIS_URL` (deve permanecer ausente nesta fase; obrigatória somente se as
+  integrações externas forem habilitadas futuramente)
 - `JWT_ACCESS_SECRET`
 - `JWT_ISSUER`
 - `JWT_AUDIENCE`

@@ -1,7 +1,7 @@
 import { Redis } from "ioredis";
 import { z } from "zod";
-import { env } from "../../config/env.js";
 import { logger } from "../../config/logger.js";
+import { requireRedisUrl } from "../redis/redis.js";
 import type { WebSocketServer } from "ws";
 import { broadcastToTenant } from "./websocket.js";
 
@@ -9,7 +9,7 @@ const channel = "atendeia:tenant-events";
 const envelopeSchema = z.object({ tenantId: z.uuid(), event: z.unknown() });
 
 export function createRealtimeSubscriber(websocketServer: WebSocketServer): Redis {
-  const subscriber = new Redis(env.REDIS_URL, { lazyConnect: true, maxRetriesPerRequest: 1 });
+  const subscriber = new Redis(requireRedisUrl(), { lazyConnect: true, maxRetriesPerRequest: 1 });
   subscriber.on("message", (_channel, message) => {
     const parsed = envelopeSchema.safeParse(safeJson(message));
     if (parsed.success) broadcastToTenant(websocketServer, parsed.data.tenantId, parsed.data.event);

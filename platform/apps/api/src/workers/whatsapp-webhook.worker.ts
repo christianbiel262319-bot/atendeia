@@ -1,10 +1,10 @@
 import { Worker, type Job } from "bullmq";
 import { Redis } from "ioredis";
 import { z } from "zod";
-import { env } from "../config/env.js";
 import { logger } from "../config/logger.js";
 import { prisma } from "../infra/database/prisma.js";
 import { publishTenantEvent } from "../infra/realtime/pubsub.js";
+import { requireRedisUrl } from "../infra/redis/redis.js";
 import { AiService } from "../modules/ai/ai.service.js";
 import { shouldRunAiForConversation } from "../modules/conversations/conversation-policy.js";
 import { WhatsAppOutboundService } from "../modules/whatsapp/outbound.service.js";
@@ -36,8 +36,9 @@ const aiService = new AiService();
 const outboundService = new WhatsAppOutboundService();
 
 export function createWhatsAppWebhookWorker() {
-  const connection = new Redis(env.REDIS_URL, { maxRetriesPerRequest: null });
-  const realtimePublisher = new Redis(env.REDIS_URL, { maxRetriesPerRequest: 1 });
+  const redisUrl = requireRedisUrl();
+  const connection = new Redis(redisUrl, { maxRetriesPerRequest: null });
+  const realtimePublisher = new Redis(redisUrl, { maxRetriesPerRequest: 1 });
   const worker = new Worker(
     "whatsapp-webhooks",
     async (job) => processWebhookJob(job, realtimePublisher),

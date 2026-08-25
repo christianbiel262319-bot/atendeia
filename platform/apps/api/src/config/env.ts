@@ -19,7 +19,10 @@ const envSchema = z.object({
   PORT: z.coerce.number().int().min(1).max(65535).default(4000),
   APP_ORIGIN: z.url(),
   DATABASE_URL: z.string().min(1),
-  REDIS_URL: z.string().min(1),
+  REDIS_URL: z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z.string().min(1).optional(),
+  ),
   JWT_ACCESS_SECRET: z.string().min(32),
   JWT_ISSUER: z.string().min(1).default("atendeia-api"),
   JWT_AUDIENCE: z.string().min(1).default("atendeia-web"),
@@ -57,6 +60,13 @@ const envSchema = z.object({
       code: "custom",
       path: ["COOKIE_SECURE"],
       message: "COOKIE_SECURE deve permanecer true em produção",
+    });
+  }
+  if (value.EXTERNAL_INTEGRATIONS_ENABLED && !value.REDIS_URL) {
+    context.addIssue({
+      code: "custom",
+      path: ["REDIS_URL"],
+      message: "REDIS_URL é obrigatória quando integrações externas estão habilitadas",
     });
   }
 });

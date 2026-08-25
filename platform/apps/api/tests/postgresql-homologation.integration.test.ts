@@ -1,7 +1,7 @@
-import { createServer, type Server } from "node:http";
+import { spawn, type ChildProcess } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
+import { createServer } from "node:net";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createApp } from "../src/app.js";
 import { disconnectDatabase, prisma } from "../src/infra/database/prisma.js";
 
 const enabled = process.env.ATENDEIA_RUN_POSTGRES_ACCEPTANCE === "true";
@@ -15,20 +15,27 @@ type Session = {
   cookies: string;
 };
 
+type ApiProcess = {
+  child: ChildProcess;
+  baseUrl: string;
+};
+
 suite("homologação real com PostgreSQL", () => {
   const suffix = randomUUID().slice(0, 8);
   const password = "Senha-Homologacao-2026!";
+  const accountAEmail = `homologacao-a-${suffix}@example.test`;
   const createdTenantIds: string[] = [];
   const createdUserIds: string[] = [];
-  let server: Server;
+  let api: ApiProcess;
   let baseUrl: string;
 
   beforeAll(async () => {
-    ({ server, baseUrl } = await startApi());
+    api = await startApiProcess({ PLATFORM_OWNER_EMAIL: accountAEmail });
+    baseUrl = api.baseUrl;
   });
 
   afterAll(async () => {
-    if (server?.listening) await closeServer(server);
+    if (api) await stopApiProcess(api);
     for (const tenantId of createdTenantIds) {
       await prisma.tenant.deleteMany({ where: { id: tenantId } });
     }
@@ -42,7 +49,7 @@ suite("homologação real com PostgreSQL", () => {
     const accountA = await register({
       companyName: `Empresa Persistência A ${suffix}`,
       fullName: "Usuário Homologação A",
-      email: `homologacao-a-${suffix}@example.test`,
+      email: accountAEmail,
       password,
     });
     createdTenantIds.push(accountA.tenantId);
@@ -97,18 +104,19 @@ suite("homologação real com PostgreSQL", () => {
     const revokedAccess = await request("/v1/auth/me", { session: accountA });
     expect(revokedAccess.status).toBe(401);
 
-    await closeServer(server);
+    await stopApiProcess(api);
     await disconnectDatabase();
-    ({ server, baseUrl } = await startApi());
+    api = await startApiProcess({ PLATFORM_OWNER_EMAIL: accountAEmail });
+    baseUrl = api.baseUrl;
 
     const wrongPassword = await fetch(`${baseUrl}/v1/auth/login`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email: `homologacao-a-${suffix}@example.test`, password: "senha-incorreta" }),
+      body: JSON.stringify({ email: accountAEmail, password: "senha-incorreta" }),
     });
     expect(wrongPassword.status).toBe(401);
 
-    let loggedA = await login(`homologacao-a-${suffix}@example.test`, password);
+    let loggedA = await login(accountAEmail, password);
     const profileResponse = await request("/v1/auth/me", { session: loggedA });
     expect(profileResponse.status).toBe(200);
     const profile = await jsonData<{ tenant: { id: string; name: string } }>(profileResponse);
@@ -138,7 +146,7 @@ suite("homologação real com PostgreSQL", () => {
     });
     expect(reusedRefresh.status).toBe(401);
     expect((await request("/v1/auth/me", { session: loggedA })).status).toBe(401);
-    loggedA = await login(`homologacao-a-${suffix}@example.test`, password);
+    loggedA = await login(accountAEmail, password);
 
     const accountB = await register({
       companyName: `Empresa Isolada B ${suffix}`,
@@ -175,6 +183,15 @@ suite("homologação real com PostgreSQL", () => {
       data: { tenantId: accountB.tenantId, contactId: contactB.id },
       select: { id: true },
     });
+
+    const injectedQuery = await request(
+      `/v1/crm/contacts?tenantId=${encodeURIComponent(accountB.tenantId)}`,
+      { session: loggedA },
+    );
+    expect(injectedQuery.status).toBe(200);
+    const injectedQueryContacts = await jsonData<{ items: Array<{ id: string }> }>(injectedQuery);
+    expect(injectedQueryContacts.items.some((item) => item.id === contactA.id)).toBe(true);
+    expect(injectedQueryContacts.items.some((item) => item.id === contactB.id)).toBe(false);
 
     expect((await request(`/v1/crm/contacts/${contactB.id}`, { session: loggedA })).status).toBe(404);
     expect((await request(`/v1/conversations/${conversationB.id}`, { session: loggedA })).status).toBe(404);
@@ -307,17 +324,78 @@ function sha256ForTest(value: string): string {
   return createHash("sha256").update(value, "utf8").digest("hex");
 }
 
-async function startApi(): Promise<{ server: Server; baseUrl: string }> {
-  const server = createServer(createApp());
+async function startApiProcess(environment: NodeJS.ProcessEnv = {}): Promise<ApiProcess> {
+  const port = await reservePort();
+  const baseUrl = `http://127.0.0.1:${port}`;
+  const child = spawn(process.execPath, ["--import", "tsx", "src/server.ts"], {
+    cwd: process.cwd(),
+    env: {
+      ...process.env,
+      ...environment,
+      PORT: String(port),
+      LOG_LEVEL: "silent",
+      EXTERNAL_INTEGRATIONS_ENABLED: "false",
+    },
+    stdio: "ignore",
+  });
+
+  const deadline = Date.now() + 20_000;
+  while (Date.now() < deadline) {
+    if (child.exitCode !== null) {
+      throw new Error("A API de aceitação encerrou antes de ficar pronta; consulte os logs seguros do runtime");
+    }
+    try {
+      const readiness = await fetch(`${baseUrl}/ready`);
+      if (readiness.status === 200) {
+        return { child, baseUrl };
+      }
+    } catch {
+      // O processo ainda está iniciando ou aguardando a primeira conexão PostgreSQL.
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  await stopChild(child);
+  throw new Error("A API de aceitação não ficou pronta em 20 segundos");
+}
+
+async function stopApiProcess(api: ApiProcess): Promise<void> {
+  await stopChild(api.child);
+}
+
+async function stopChild(child: ChildProcess): Promise<void> {
+  if (child.exitCode !== null) return;
+  child.kill("SIGTERM");
+  if (await waitForExit(child, 5_000)) return;
+  child.kill("SIGKILL");
+  if (!(await waitForExit(child, 5_000))) {
+    throw new Error("Não foi possível encerrar o processo isolado da API de aceitação");
+  }
+}
+
+async function waitForExit(child: ChildProcess, timeoutMs: number): Promise<boolean> {
+  if (child.exitCode !== null) return true;
+  return new Promise((resolve) => {
+    const timeout = setTimeout(() => {
+      child.off("exit", onExit);
+      resolve(false);
+    }, timeoutMs);
+    const onExit = () => {
+      clearTimeout(timeout);
+      resolve(true);
+    };
+    child.once("exit", onExit);
+  });
+}
+
+async function reservePort(): Promise<number> {
+  const server = createServer();
   await new Promise<void>((resolve, reject) => {
     server.once("error", reject);
     server.listen(0, "127.0.0.1", resolve);
   });
   const address = server.address();
-  if (!address || typeof address === "string") throw new Error("Endereço da API indisponível");
-  return { server, baseUrl: `http://127.0.0.1:${address.port}` };
-}
-
-async function closeServer(server: Server): Promise<void> {
+  if (!address || typeof address === "string") throw new Error("Porta de aceitação indisponível");
+  const port = address.port;
   await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  return port;
 }

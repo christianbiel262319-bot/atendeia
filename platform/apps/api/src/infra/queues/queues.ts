@@ -1,6 +1,6 @@
 import { Queue } from "bullmq";
 import { env } from "../../config/env.js";
-import { queueRedis } from "../redis/redis.js";
+import { getQueueRedis } from "../redis/redis.js";
 
 const defaultJobOptions = {
   attempts: 5,
@@ -15,7 +15,7 @@ let outboundMessageQueue: Queue | null = null;
 export function getWebhookQueue(): Queue {
   assertQueuesEnabled();
   webhookQueue ??= new Queue("whatsapp-webhooks", {
-    connection: queueRedis,
+    connection: getQueueRedis(),
     defaultJobOptions,
   });
   return webhookQueue;
@@ -24,7 +24,7 @@ export function getWebhookQueue(): Queue {
 export function getOutboundMessageQueue(): Queue {
   assertQueuesEnabled();
   outboundMessageQueue ??= new Queue("whatsapp-outbound", {
-    connection: queueRedis,
+    connection: getQueueRedis(),
     defaultJobOptions,
   });
   return outboundMessageQueue;

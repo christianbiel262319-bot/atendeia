@@ -2,7 +2,7 @@ import { Router } from "express";
 import { asyncHandler } from "../../core/http/async-handler.js";
 import { env } from "../../config/env.js";
 import { prisma } from "../../infra/database/prisma.js";
-import { queueRedis } from "../../infra/redis/redis.js";
+import { getQueueRedis } from "../../infra/redis/redis.js";
 
 export const healthRouter = Router();
 
@@ -18,7 +18,7 @@ export const readinessHandler = asyncHandler(async (_request, response) => {
   const database = databaseResult[0]?.status === "fulfilled";
   let redis: boolean | "disabled" = "disabled";
   if (env.EXTERNAL_INTEGRATIONS_ENABLED) {
-    const redisResult = await Promise.allSettled([queueRedis.ping()]);
+    const redisResult = await Promise.allSettled([getQueueRedis().ping()]);
     redis = redisResult[0]?.status === "fulfilled";
   }
   const readiness = readinessState(database, redis);
