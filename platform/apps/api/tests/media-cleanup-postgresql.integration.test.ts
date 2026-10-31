@@ -3,6 +3,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest
 import { prisma } from "../src/infra/database/prisma.js";
 import { env } from "../src/config/env.js";
 import { KnowledgeService } from "../src/modules/knowledge/knowledge.service.js";
+import { productSchema } from "../src/modules/knowledge/knowledge.schemas.js";
 import { MediaService, cloudinarySignature } from "../src/modules/media/media.service.js";
 import { runMediaCleanupOnce, scheduleMediaCleanup } from "../src/modules/media/media-cleanup.service.js";
 
@@ -79,4 +80,23 @@ suite("cleanup with real PostgreSQL and simulated Cloudinary", () => {
     expect(provider).toHaveBeenCalledTimes(1);
     expect((await prisma.mediaCleanupTask.findUniqueOrThrow({ where: { id: task.id } })).completedAt).not.toBeNull();
   });
+  it("rejects cross-tenant image links and deletion without provider access", async () => {
+    const { asset, product } = await fixture();
+    const otherTenant = randomUUID();
+    const otherUser = randomUUID();
+    try {
+      await prisma.tenant.create({ data: { id: otherTenant, name: "Other cleanup tenant", slug: `other-${otherTenant}` } });
+      await prisma.user.create({ data: { id: otherUser, email: `${otherUser}@example.test`, passwordHash: "test", fullName: "Other cleanup tenant" } });
+      const otherContext = { tenantId: otherTenant, userId: otherUser, role: "OWNER" as const };
+      await expect(knowledge.createProduct(otherContext, productSchema.parse({ name: "Forbidden image", description: "Test", imageAssetId: asset.id }))).rejects.toMatchObject({ code: "INVALID_IMAGE" });
+      await expect(new MediaService().remove(otherContext, asset.id)).rejects.toMatchObject({ code: "NOT_FOUND" });
+      expect(provider).not.toHaveBeenCalled();
+      expect((await prisma.product.findUniqueOrThrow({ where: { id: product.id } })).imageAssetId).toBe(asset.id);
+      expect(await prisma.mediaAsset.findUnique({ where: { id: asset.id } })).not.toBeNull();
+    } finally {
+      await prisma.tenant.deleteMany({ where: { id: otherTenant } });
+      await prisma.user.deleteMany({ where: { id: otherUser } });
+    }
+  });
+
 });

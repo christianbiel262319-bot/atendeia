@@ -1,6 +1,6 @@
 # Correção de limpeza do Cloudinary — 31/10/2026
 
-> Atualização: a reconciliação e 20 verificações SQL com PostgreSQL real foram concluídas na branch isolada do Neon. Consulte [o relatório atualizado](cloudinary-homologation-20261031/RELATORIO.md). As quatro integrações da aplicação seguem bloqueadas por DNS. O texto abaixo registra a primeira rodada de preparação.
+> Atualização: os quatro testes Prisma/PostgreSQL pendentes e um teste adicional de isolamento passaram. Consulte [o relatório final](cloudinary-homologation-20261031/PRISMA_E_CLOUDINARY.md). A validação com Cloudinary real está preparada e aguarda configuração segura acessível. O texto abaixo registra a primeira rodada de preparação.
 
 ## Base e verificação da implantação
 

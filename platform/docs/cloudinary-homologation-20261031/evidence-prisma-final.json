@@ -1,0 +1,256 @@
+{
+  "date": "2026-10-31",
+  "baseCommit": "042d1241cfc2e0e5f6500cf53bac095c632976a5",
+  "target": {
+    "project": "atendeia-homologacao",
+    "projectId": "spring-bonus-74301423",
+    "branch": "atendeia-cloudinary-test-20261031",
+    "branchId": "br-red-term-aft504d9",
+    "database": "atendeia_homologacao"
+  },
+  "transport": {
+    "driver": "PrismaNeon 7.9.1",
+    "serverlessDriver": "1.2.0",
+    "route": "WSS through the configured HTTPS proxy",
+    "scope": "test processes only; production PrismaPg unchanged",
+    "postgres": "18.6"
+  },
+  "realPostgresql": {
+    "originalPendingTestsPassed": 4,
+    "additionalImageIsolationTestsPassed": 1,
+    "runs": [
+      {
+        "tests": [
+          {
+            "name": "homologação real com PostgreSQL persiste cadastro, empresa e contato após logout e reinício, isolando dois tenants",
+            "status": "passed",
+            "durationMs": 43548.790972
+          }
+        ],
+        "passed": 1,
+        "failed": 0,
+        "dataPreserved": true,
+        "tablesCompared": 32
+      },
+      {
+        "tests": [
+          {
+            "name": "cleanup with real PostgreSQL and simulated Cloudinary preserves shared images, queues unlink atomically, and blocks replay after cleanup",
+            "status": "passed",
+            "durationMs": 4263.671001
+          },
+          {
+            "name": "cleanup with real PostgreSQL and simulated Cloudinary rolls back product and outbox changes together",
+            "status": "passed",
+            "durationMs": 1027.803613
+          },
+          {
+            "name": "cleanup with real PostgreSQL and simulated Cloudinary recovers provider failures after reconnect and allows only one concurrent claim",
+            "status": "passed",
+            "durationMs": 14680.500226
+          },
+          {
+            "name": "cleanup with real PostgreSQL and simulated Cloudinary rejects cross-tenant image links and deletion without provider access",
+            "status": "passed",
+            "durationMs": 1147.4806970000027
+          }
+        ],
+        "passed": 4,
+        "failed": 0,
+        "dataPreserved": true,
+        "tablesCompared": 32
+      }
+    ]
+  },
+  "localChecks": {
+    "apiPassed": 79,
+    "frontendPassed": 23,
+    "buildModePassed": 5,
+    "apiBuild": true,
+    "frontendBuild": true,
+    "lint": true
+  },
+  "migration": {
+    "count": 7,
+    "changed": false,
+    "manualSqlExecuted": false,
+    "ddlExecuted": false
+  },
+  "preservation": [
+    {
+      "table": "AiConfiguration",
+      "rows": 1,
+      "preserved": true
+    },
+    {
+      "table": "AuditLog",
+      "rows": 110,
+      "preserved": true
+    },
+    {
+      "table": "BillingWebhookEvent",
+      "rows": 5,
+      "preserved": true
+    },
+    {
+      "table": "BusinessHour",
+      "rows": 1,
+      "preserved": true
+    },
+    {
+      "table": "BusinessHourException",
+      "rows": 0,
+      "preserved": true
+    },
+    {
+      "table": "CompanyProfile",
+      "rows": 1,
+      "preserved": true
+    },
+    {
+      "table": "Contact",
+      "rows": 3,
+      "preserved": true
+    },
+    {
+      "table": "ContactNote",
+      "rows": 1,
+      "preserved": true
+    },
+    {
+      "table": "Conversation",
+      "rows": 0,
+      "preserved": true
+    },
+    {
+      "table": "EmailVerificationToken",
+      "rows": 0,
+      "preserved": true
+    },
+    {
+      "table": "Faq",
+      "rows": 1,
+      "preserved": true
+    },
+    {
+      "table": "MediaAsset",
+      "rows": 2,
+      "preserved": true
+    },
+    {
+      "table": "MediaCleanupTask",
+      "rows": 0,
+      "preserved": true
+    },
+    {
+      "table": "Membership",
+      "rows": 3,
+      "preserved": true
+    },
+    {
+      "table": "Message",
+      "rows": 0,
+      "preserved": true
+    },
+    {
+      "table": "MfaSecret",
+      "rows": 1,
+      "preserved": true
+    },
+    {
+      "table": "PasswordResetToken",
+      "rows": 0,
+      "preserved": true
+    },
+    {
+      "table": "Payment",
+      "rows": 4,
+      "preserved": true
+    },
+    {
+      "table": "Plan",
+      "rows": 3,
+      "preserved": true
+    },
+    {
+      "table": "PlatformAuditLog",
+      "rows": 0,
+      "preserved": true
+    },
+    {
+      "table": "PlatformMembership",
+      "rows": 0,
+      "preserved": true
+    },
+    {
+      "table": "Product",
+      "rows": 2,
+      "preserved": true
+    },
+    {
+      "table": "RefreshSession",
+      "rows": 179,
+      "preserved": true
+    },
+    {
+      "table": "Service",
+      "rows": 1,
+      "preserved": true
+    },
+    {
+      "table": "Subscription",
+      "rows": 4,
+      "preserved": true
+    },
+    {
+      "table": "TeamInvitation",
+      "rows": 3,
+      "preserved": true
+    },
+    {
+      "table": "Tenant",
+      "rows": 2,
+      "preserved": true
+    },
+    {
+      "table": "TenantSecret",
+      "rows": 0,
+      "preserved": true
+    },
+    {
+      "table": "User",
+      "rows": 2,
+      "preserved": true
+    },
+    {
+      "table": "WebhookEvent",
+      "rows": 0,
+      "preserved": true
+    },
+    {
+      "table": "WhatsAppConnection",
+      "rows": 0,
+      "preserved": true
+    },
+    {
+      "table": "_prisma_migrations",
+      "rows": 7,
+      "preserved": true
+    }
+  ],
+  "cloudinaryLive": {
+    "prepared": true,
+    "executed": false,
+    "preflightExitCode": 2,
+    "reason": "Required Cloudinary environment values are unavailable in accessible secure configurations",
+    "assetsUploaded": 0,
+    "assetsDeleted": 0,
+    "fixtureGuardUnitTestsPassed": 5,
+    "overwrite": false,
+    "deletionScope": "new UUID namespace plus upload receipt asset_id and run tag"
+  },
+  "mainChanged": false,
+  "renderChanged": false,
+  "neonParentChanged": false,
+  "productionPublished": false
+}

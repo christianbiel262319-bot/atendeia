@@ -120,7 +120,7 @@ suite("homologação real com PostgreSQL", () => {
     const profileResponse = await request("/v1/auth/me", { session: loggedA });
     expect(profileResponse.status).toBe(200);
     const profile = await jsonData<{ tenant: { id: string; name: string } }>(profileResponse);
-    expect(profile.tenant).toEqual({ id: accountA.tenantId, name: `Empresa Persistida A ${suffix}` });
+    expect(profile.tenant).toMatchObject({ id: accountA.tenantId, name: `Empresa Persistida A ${suffix}`, timezone: "America/Sao_Paulo" });
 
     const persistedContact = await request(`/v1/crm/contacts/${contactA.id}`, { session: loggedA });
     expect(persistedContact.status).toBe(200);
@@ -234,7 +234,7 @@ suite("homologação real com PostgreSQL", () => {
     expect(expiredRefresh.status).toBe(401);
     expect(productA.id).toBeTruthy();
     expect(conversationA.id).toBeTruthy();
-  }, 30_000);
+  }, process.env.ATENDEIA_TEST_NEON_WS === "true" ? 120_000 : 30_000);
 
   async function register(input: { companyName: string; fullName: string; email: string; password: string }): Promise<Session> {
     const response = await fetch(`${baseUrl}/v1/auth/register`, {

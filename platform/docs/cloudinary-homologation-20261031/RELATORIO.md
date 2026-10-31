@@ -1,5 +1,7 @@
 # Homologação Cloudinary com PostgreSQL real — 31/10/2026
 
+> Atualização posterior: os quatro testes Prisma pendentes e um teste adicional de isolamento de imagens passaram. Leia [a etapa final com Prisma e a preparação do Cloudinary real](PRISMA_E_CLOUDINARY.md). O texto abaixo preserva o registro da etapa SQL anterior.
+
 A reconciliação do histórico e os testes de contratos SQL foram concluídos no PostgreSQL 18.6 da branch isolada do Neon. A homologação ponta a ponta da aplicação continua pendente por bloqueio de DNS neste runtime.
 
 ## Escopo confirmado
