@@ -2,6 +2,7 @@ import type { Prisma } from "../../generated/prisma/client.js";
 import { AppError } from "../../core/errors/app-error.js";
 import type { TenantContext } from "../../core/tenant/tenant-context.js";
 import { prisma } from "../../infra/database/prisma.js";
+import { scheduleMediaCleanup } from "../media/media-cleanup.service.js";
 import type { z } from "zod";
 import type {
   businessHourExceptionSchema,
@@ -196,10 +197,23 @@ export class KnowledgeService {
       ...(input.imageAssetId !== undefined ? { imageAssetId: input.imageAssetId } : {}),
       ...(input.price !== undefined ? { price: input.price } : {}),
     };
-    await ensureChanged(prisma.product.updateMany({ where: { id, tenantId: context.tenantId }, data }));
-    const product = await prisma.product.findFirstOrThrow({
-      where: { id, tenantId: context.tenantId },
-      include: { imageAsset: { select: imageSelect } },
+    const product = await prisma.$transaction(async (tx) => {
+      // Serialize edits to one product so no previous image is missed.
+      const locked = await tx.$queryRaw<Array<{ imageAssetId: string | null }>>`
+        SELECT "imageAssetId" FROM "Product"
+        WHERE "id" = ${id}::uuid AND "tenantId" = ${context.tenantId}::uuid
+        FOR UPDATE
+      `;
+      if (locked.length !== 1) throw new AppError(404, "NOT_FOUND", "Item não encontrado");
+      await ensureChanged(tx.product.updateMany({ where: { id, tenantId: context.tenantId }, data }));
+      const oldId = locked[0]?.imageAssetId;
+      if (input.imageAssetId !== undefined && oldId && oldId !== input.imageAssetId) {
+        await scheduleMediaCleanup(tx, context, oldId);
+      }
+      return tx.product.findFirstOrThrow({
+        where: { id, tenantId: context.tenantId },
+        include: { imageAsset: { select: imageSelect } },
+      });
     });
     await this.audit(context, "knowledge.product_updated", "product", id);
     return product;
@@ -238,13 +252,25 @@ export class KnowledgeService {
 
   async remove(context: TenantContext, resource: "product" | "service" | "faq", id: string) {
     const where = { id, tenantId: context.tenantId };
-    const result =
-      resource === "product"
-        ? await prisma.product.deleteMany({ where })
-        : resource === "service"
-          ? await prisma.service.deleteMany({ where })
-          : await prisma.faq.deleteMany({ where });
-    if (result.count !== 1) throw new AppError(404, "NOT_FOUND", "Item não encontrado");
+    if (resource === "product") {
+      await prisma.$transaction(async (tx) => {
+        const locked = await tx.$queryRaw<Array<{ imageAssetId: string | null }>>`
+          SELECT "imageAssetId" FROM "Product"
+          WHERE "id" = ${id}::uuid AND "tenantId" = ${context.tenantId}::uuid
+          FOR UPDATE
+        `;
+        if (locked.length !== 1) throw new AppError(404, "NOT_FOUND", "Item não encontrado");
+        await ensureChanged(tx.product.deleteMany({ where }));
+        if (locked[0]?.imageAssetId) {
+          await scheduleMediaCleanup(tx, context, locked[0].imageAssetId);
+        }
+      });
+    } else {
+      const result = resource === "service"
+        ? await prisma.service.deleteMany({ where })
+        : await prisma.faq.deleteMany({ where });
+      if (result.count !== 1) throw new AppError(404, "NOT_FOUND", "Item não encontrado");
+    }
     await this.audit(context, `knowledge.${resource}_deleted`, resource, id);
   }
 

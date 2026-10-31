@@ -658,3 +658,22 @@ model MediaAsset {
   @@unique([tenantId, id])
   @@index([tenantId, createdAt])
 }
+
+model MediaCleanupTask {
+  id            String   @id @default(uuid()) @db.Uuid
+  tenantId      String   @db.Uuid
+  mediaAssetId  String   @db.Uuid
+  publicId      String   @db.VarChar(240)
+  resourceType  String   @db.VarChar(40)
+  attempts      Int      @default(0)
+  nextAttemptAt DateTime @default(now())
+  leasedUntil   DateTime?
+  retiredAt     DateTime?
+  completedAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([tenantId, mediaAssetId])
+  @@unique([tenantId, publicId])
+  @@index([completedAt, nextAttemptAt, leasedUntil])
+}

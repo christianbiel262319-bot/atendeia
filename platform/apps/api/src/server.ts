@@ -7,6 +7,9 @@ import { closeQueues } from "./infra/queues/queues.js";
 import { attachWebSocketServer } from "./infra/realtime/websocket.js";
 import { connectRealtimeSubscriber, createRealtimeSubscriber } from "./infra/realtime/pubsub.js";
 import { connectRedis, disconnectRedis } from "./infra/redis/redis.js";
+import { startMediaCleanup } from "./modules/media/media-cleanup.service.js";
+
+let stopMediaCleanup: (() => Promise<void>) | null = null;
 
 const app = createApp();
 const server = createServer(app);
@@ -21,6 +24,7 @@ async function start(): Promise<void> {
     await connectRedis();
     await connectRealtimeSubscriber(realtimeSubscriber);
   }
+  stopMediaCleanup = startMediaCleanup();
   server.listen(env.PORT, "0.0.0.0", () => {
     logger.info({ port: env.PORT }, "AtendeIA API listening");
   });
@@ -30,6 +34,7 @@ async function shutdown(signal: string): Promise<void> {
   logger.info({ signal }, "Graceful shutdown started");
   server.close();
   websocketServer.close();
+  if (stopMediaCleanup) await stopMediaCleanup();
   if (realtimeSubscriber) {
     await realtimeSubscriber.quit();
     await closeQueues();

@@ -1,4 +1,6 @@
-import { createHash } from "node:crypto";
+import { lockMediaIdentity, scheduleMediaCleanup } from "./media-cleanup.service.js";
+import { cloudinarySignature } from "./cloudinary-signature.js";
+export { cloudinarySignature } from "./cloudinary-signature.js";
 import { env } from "../../config/env.js";
 import { AppError } from "../../core/errors/app-error.js";
 import { constantTimeEqual } from "../../core/security/crypto.js";
@@ -51,27 +53,41 @@ export class MediaService {
     if (!constantTimeEqual(expected, input.signature.toLowerCase())) {
       throw new AppError(401, "INVALID_MEDIA_SIGNATURE", "Assinatura de mídia inválida");
     }
-    const asset = await prisma.mediaAsset.upsert({
-      where: { tenantId_publicId: { tenantId: context.tenantId, publicId: input.publicId } },
-      create: {
-        tenantId: context.tenantId,
-        createdByUserId: context.userId,
-        publicId: input.publicId,
-        secureUrl: input.secureUrl,
-        resourceType: input.resourceType,
-        format: input.format ?? null,
-        bytes: input.bytes ?? null,
-        width: input.width ?? null,
-        height: input.height ?? null,
-      },
-      update: {
-        secureUrl: input.secureUrl,
-        resourceType: input.resourceType,
-        format: input.format ?? null,
-        bytes: input.bytes ?? null,
-        width: input.width ?? null,
-        height: input.height ?? null,
-      },
+    const asset = await prisma.$transaction(async (tx) => {
+      await lockMediaIdentity(tx, context.tenantId, input.publicId);
+      const retired = await tx.mediaCleanupTask.findFirst({
+        where: { tenantId: context.tenantId, publicId: input.publicId, retiredAt: { not: null } },
+        select: { id: true },
+      });
+      if (retired) throw new AppError(409, "MEDIA_RETIRED", "Envie a imagem novamente com um novo identificador");
+      const existing = await tx.mediaAsset.findUnique({
+        where: { tenantId_publicId: { tenantId: context.tenantId, publicId: input.publicId } },
+      });
+      if (existing && existing.resourceType !== input.resourceType) {
+        throw new AppError(409, "MEDIA_TYPE_CONFLICT", "Tipo de mídia incompatível com o registro existente");
+      }
+      return tx.mediaAsset.upsert({
+        where: { tenantId_publicId: { tenantId: context.tenantId, publicId: input.publicId } },
+        create: {
+          tenantId: context.tenantId,
+          createdByUserId: context.userId,
+          publicId: input.publicId,
+          secureUrl: input.secureUrl,
+          resourceType: input.resourceType,
+          format: input.format ?? null,
+          bytes: input.bytes ?? null,
+          width: input.width ?? null,
+          height: input.height ?? null,
+        },
+        update: {
+          secureUrl: input.secureUrl,
+          resourceType: input.resourceType,
+          format: input.format ?? null,
+          bytes: input.bytes ?? null,
+          width: input.width ?? null,
+          height: input.height ?? null,
+        },
+      });
     });
     await prisma.auditLog.create({
       data: {
@@ -86,7 +102,7 @@ export class MediaService {
   }
 
   async remove(context: TenantContext, id: string): Promise<void> {
-    const config = cloudinaryConfig();
+    cloudinaryConfig();
     const asset = await prisma.mediaAsset.findFirst({
       where: { id, tenantId: context.tenantId },
       include: { _count: { select: { productImages: true } } },
@@ -95,44 +111,19 @@ export class MediaService {
     if (asset._count.productImages > 0) {
       throw new AppError(409, "MEDIA_IN_USE", "Remova a imagem dos produtos antes de excluí-la");
     }
-    const timestamp = Math.floor(Date.now() / 1_000);
-    const body = new URLSearchParams({
-      public_id: asset.publicId,
-      timestamp: String(timestamp),
-      api_key: config.apiKey,
-      signature: cloudinarySignature({ public_id: asset.publicId, timestamp }, config.apiSecret),
-    });
-    const response = await fetch(
-      `https://api.cloudinary.com/v1_1/${encodeURIComponent(config.cloudName)}/${asset.resourceType}/destroy`,
-      { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body, signal: AbortSignal.timeout(20_000) },
-    );
-    if (!response.ok) throw new AppError(502, "MEDIA_PROVIDER_ERROR", "Não foi possível remover a mídia");
-    await prisma.$transaction([
-      prisma.mediaAsset.deleteMany({ where: { id, tenantId: context.tenantId } }),
-      prisma.auditLog.create({
+    // Queue atomically; the worker re-checks references before any provider call.
+    await prisma.$transaction(async (tx) => {
+      await scheduleMediaCleanup(tx, context, id);
+      await tx.auditLog.create({
         data: {
-          tenantId: context.tenantId,
-          actorUserId: context.userId,
-          action: "media.deleted",
-          resourceType: "media_asset",
-          resourceId: id,
+          tenantId: context.tenantId, actorUserId: context.userId,
+          action: "media.deletion_requested", resourceType: "media_asset", resourceId: id,
         },
-      }),
-    ]);
+      });
+    });
   }
 }
 
-export function cloudinarySignature(
-  parameters: Record<string, string | number>,
-  secret: string,
-): string {
-  const serialized = Object.entries(parameters)
-    .filter(([, value]) => value !== "")
-    .sort(([left], [right]) => left.localeCompare(right))
-    .map(([key, value]) => `${key}=${value}`)
-    .join("&");
-  return createHash("sha1").update(`${serialized}${secret}`, "utf8").digest("hex");
-}
 
 function cloudinaryConfig(): { cloudName: string; apiKey: string; apiSecret: string } {
   if (!env.CLOUDINARY_CLOUD_NAME || !env.CLOUDINARY_API_KEY || !env.CLOUDINARY_API_SECRET) {
