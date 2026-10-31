@@ -1,0 +1,294 @@
+{
+  "date": "2026-10-31",
+  "target": {
+    "project": "atendeia-homologacao",
+    "projectId": "spring-bonus-74301423",
+    "branch": "atendeia-cloudinary-test-20261031",
+    "branchId": "br-red-term-aft504d9",
+    "database": "atendeia_homologacao",
+    "postgres": "18.6"
+  },
+  "source": {
+    "deployedCommitReportedByUser": "595431c044f39f22e07fca336a02c33cc87aaa39",
+    "patchBase": "32b5e39f999536ea728ba4c3abc2dd6a88f8082a",
+    "patchCommit": "2b5377baea6d649026ce5577f8b5b06cbb602ecc",
+    "frontendCommitsAhead": 3,
+    "apiDifferenceBetweenDeployedAndBase": false
+  },
+  "migration": {
+    "total": 7,
+    "allChecksumsMatch": true,
+    "pending": 0,
+    "name": "20261031180000_media_cleanup_outbox",
+    "checksum": "02c72b464ff915bb60e77179531735507772fd5f73aa5456ae36b7cb0c0b1f09",
+    "exactTableShapeVerified": true,
+    "method": "guarded SQL equivalent of applied-history reconciliation; Prisma CLI blocked by runtime DNS",
+    "permanentSchemaDdlExecuted": false
+  },
+  "sqlContractChecks": [
+    {
+      "name": "All fixtures rolled back without touching existing rows",
+      "passed": true
+    },
+    {
+      "name": "Cleanup intent survives removal of MediaAsset",
+      "passed": true
+    },
+    {
+      "name": "Completed tombstone is excluded from pending work",
+      "passed": true
+    },
+    {
+      "name": "Composite FK rejects cross-tenant image link",
+      "passed": true
+    },
+    {
+      "name": "Conditional lease update allows one claim",
+      "passed": true
+    },
+    {
+      "name": "Expired worker lease can be reclaimed",
+      "passed": true
+    },
+    {
+      "name": "FK restrict protects referenced images",
+      "passed": true
+    },
+    {
+      "name": "Idempotent enqueue preserves active lease",
+      "passed": true
+    },
+    {
+      "name": "Product edit and cleanup intent roll back together",
+      "passed": true
+    },
+    {
+      "name": "Product row lock and media identity advisory lock are valid PostgreSQL",
+      "passed": true
+    },
+    {
+      "name": "Provider-failure retry state retains public identity",
+      "passed": true
+    },
+    {
+      "name": "Public identity uniqueness preserves retirement tombstone",
+      "passed": true
+    },
+    {
+      "name": "Retired MediaAsset cannot be reattached by foreign key",
+      "passed": true
+    },
+    {
+      "name": "Shared image survives worker eligibility filter",
+      "passed": true
+    },
+    {
+      "name": "Tenant-scoped deletion cannot affect another tenant",
+      "passed": true
+    },
+    {
+      "name": "Unlinking one product preserves the remaining reference",
+      "passed": true
+    }
+  ],
+  "sqlMultiRequestChecks": [
+    {
+      "name": "Retired cleanup intent persisted after commit and a separate request",
+      "passed": true
+    },
+    {
+      "name": "Two concurrent claim requests had exactly one winner",
+      "passed": true,
+      "claimed": [
+        0,
+        1
+      ]
+    },
+    {
+      "name": "Expired lease was reclaimed on the persisted task",
+      "passed": true,
+      "claimed": 1,
+      "finalAttempts": 3
+    },
+    {
+      "name": "Completion tombstone was persisted before removing only the test fixture",
+      "passed": true
+    }
+  ],
+  "dataPreservation": [
+    {
+      "table": "AiConfiguration",
+      "rows": 1,
+      "preserved": true
+    },
+    {
+      "table": "AuditLog",
+      "rows": 110,
+      "preserved": true
+    },
+    {
+      "table": "BillingWebhookEvent",
+      "rows": 5,
+      "preserved": true
+    },
+    {
+      "table": "BusinessHour",
+      "rows": 1,
+      "preserved": true
+    },
+    {
+      "table": "BusinessHourException",
+      "rows": 0,
+      "preserved": true
+    },
+    {
+      "table": "CompanyProfile",
+      "rows": 1,
+      "preserved": true
+    },
+    {
+      "table": "Contact",
+      "rows": 3,
+      "preserved": true
+    },
+    {
+      "table": "ContactNote",
+      "rows": 1,
+      "preserved": true
+    },
+    {
+      "table": "Conversation",
+      "rows": 0,
+      "preserved": true
+    },
+    {
+      "table": "EmailVerificationToken",
+      "rows": 0,
+      "preserved": true
+    },
+    {
+      "table": "Faq",
+      "rows": 1,
+      "preserved": true
+    },
+    {
+      "table": "MediaAsset",
+      "rows": 2,
+      "preserved": true
+    },
+    {
+      "table": "MediaCleanupTask",
+      "rows": 0,
+      "preserved": true
+    },
+    {
+      "table": "Membership",
+      "rows": 3,
+      "preserved": true
+    },
+    {
+      "table": "Message",
+      "rows": 0,
+      "preserved": true
+    },
+    {
+      "table": "MfaSecret",
+      "rows": 1,
+      "preserved": true
+    },
+    {
+      "table": "PasswordResetToken",
+      "rows": 0,
+      "preserved": true
+    },
+    {
+      "table": "Payment",
+      "rows": 4,
+      "preserved": true
+    },
+    {
+      "table": "Plan",
+      "rows": 3,
+      "preserved": true
+    },
+    {
+      "table": "PlatformAuditLog",
+      "rows": 0,
+      "preserved": true
+    },
+    {
+      "table": "PlatformMembership",
+      "rows": 0,
+      "preserved": true
+    },
+    {
+      "table": "Product",
+      "rows": 2,
+      "preserved": true
+    },
+    {
+      "table": "RefreshSession",
+      "rows": 179,
+      "preserved": true
+    },
+    {
+      "table": "Service",
+      "rows": 1,
+      "preserved": true
+    },
+    {
+      "table": "Subscription",
+      "rows": 4,
+      "preserved": true
+    },
+    {
+      "table": "TeamInvitation",
+      "rows": 3,
+      "preserved": true
+    },
+    {
+      "table": "Tenant",
+      "rows": 2,
+      "preserved": true
+    },
+    {
+      "table": "TenantSecret",
+      "rows": 0,
+      "preserved": true
+    },
+    {
+      "table": "User",
+      "rows": 2,
+      "preserved": true
+    },
+    {
+      "table": "WebhookEvent",
+      "rows": 0,
+      "preserved": true
+    },
+    {
+      "table": "WhatsAppConnection",
+      "rows": 0,
+      "preserved": true
+    }
+  ],
+  "localChecks": {
+    "apiPassed": 74,
+    "frontendPassed": 23,
+    "buildModePassed": 5,
+    "lintPassed": true,
+    "apiBuildPassed": true,
+    "frontendBuildPassed": true
+  },
+  "notExecuted": {
+    "applicationPostgresIntegrationTests": 4,
+    "reason": "Local runtime DNS returns EAI_AGAIN for the verified Neon test endpoint. Connector SQL requests work; application/Prisma requests cannot connect.",
+    "realCloudinary": false,
+    "livePayments": false,
+    "liveWhatsApp": false,
+    "liveOpenAI": false
+  },
+  "productionChanged": false,
+  "mainChanged": false,
+  "renderDeployExecuted": false
+}
