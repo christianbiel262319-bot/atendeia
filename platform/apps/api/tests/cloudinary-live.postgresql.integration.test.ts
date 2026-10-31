@@ -29,6 +29,7 @@ suite("real Cloudinary with disposable images and real PostgreSQL", () => {
   const a = { tenantId: tenantA, userId: userA, role: "OWNER" as const },
     b = { tenantId: tenantB, userId: userB, role: "OWNER" as const };
   const owned = new Map<string, DisposableImage>();
+  const attemptedPublicIds = new Set<string>();
   const uploads = new Map<
     string,
     {
@@ -101,6 +102,7 @@ suite("real Cloudinary with disposable images and real PostgreSQL", () => {
       "file",
       "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a6xkAAAAASUVORK5CYII=",
     );
+    attemptedPublicIds.add(publicId);
     const r = await originalFetch(
       `https://api.cloudinary.com/v1_1/${encodeURIComponent(c.cloud)}/image/upload`,
       { method: "POST", body, signal: AbortSignal.timeout(20000) },
@@ -264,6 +266,16 @@ suite("real Cloudinary with disposable images and real PostgreSQL", () => {
           remaining.push(publicId);
         }
       }
+      // A timeout can occur after the provider accepted an upload. Without a
+      // receipt, preserve the file and report its disposable ID for review.
+      for (const publicId of attemptedPublicIds) {
+        if (owned.has(publicId)) continue;
+        try {
+          if (await lookup(publicId)) remaining.push(publicId);
+        } catch {
+          remaining.push(publicId);
+        }
+      }
       await prisma.product.deleteMany({
         where: { tenantId: { in: [tenantA, tenantB] } },
       });
@@ -282,7 +294,12 @@ suite("real Cloudinary with disposable images and real PostgreSQL", () => {
         writeFileSync(
           `${evidence}/cloudinary-manifest.json`,
           JSON.stringify(
-            { runId, fixtures: [...owned.values()], remaining },
+            {
+              runId,
+              attemptedPublicIds: [...attemptedPublicIds],
+              fixtures: [...owned.values()],
+              remaining,
+            },
             null,
             2,
           ),

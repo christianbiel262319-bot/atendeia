@@ -1,0 +1,29 @@
+{
+  "date": "2026-10-31",
+  "baseCommit": "da1068b6d5f6cc0934b64937cf495d378c60ecf8",
+  "localBranch": "test/cloudinary-real-20261031",
+  "workflow": ".github/workflows/cloudinary-real.yml",
+  "environment": "atendeia-cloudinary-homologacao",
+  "remoteBranchCreated": false,
+  "githubWriteStatus": 403,
+  "credentialsAvailableLocally": false,
+  "renderSecretsReadCapabilityAvailable": false,
+  "realCloudinaryExecuted": false,
+  "cloudinaryImagesUploaded": 0,
+  "cloudinaryImagesDeleted": 0,
+  "postgresAcceptanceSuitesRepeated": false,
+  "databaseAccessPerformedThisStage": false,
+  "migrationsExecuted": false,
+  "localChecks": {
+    "workflowScope": true,
+    "workflowNoDeployOrMigration": true,
+    "safeSummaryPositiveFailureMissingCases": 3,
+    "cloudinaryPreflightMissingConfigExitCode": 2,
+    "apiBuild": true,
+    "apiLint": true
+  },
+  "mainChanged": false,
+  "renderChanged": false,
+  "neonMainChanged": false,
+  "productionPublished": false
+}

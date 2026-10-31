@@ -1,5 +1,7 @@
 # Homologação final com Prisma/PostgreSQL e preparação do Cloudinary
 
+> Próxima etapa preparada: [configuração segura e execução Cloudinary no GitHub Actions](CONFIGURACAO_SEGURA_CLOUDINARY.md). As suítes PostgreSQL deste relatório não foram repetidas. A execução real do provedor segue pendente dos secrets e da publicação da branch de teste por uma conta autorizada.
+
 Os quatro testes que estavam pendentes em `042d124` foram executados com Prisma e PostgreSQL reais e passaram. Um quinto teste confirmou o isolamento de imagens entre empresas. A validação com Cloudinary real está preparada e permanece pendente de configuração segura acessível das chaves desse serviço.
 
 ## Ambiente e acesso ao banco

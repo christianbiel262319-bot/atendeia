@@ -1,0 +1,66 @@
+name: AtendeIA - Cloudinary real isolado
+
+on:
+  push:
+    branches:
+      - test/cloudinary-real-20261031
+
+permissions:
+  contents: read
+
+concurrency:
+  group: atendeia-cloudinary-isolated-tests
+  cancel-in-progress: false
+
+jobs:
+  cloudinary-real:
+    if: github.repository == 'christianbiel262319-bot/atendeia' && github.ref == 'refs/heads/test/cloudinary-real-20261031'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: atendeia-cloudinary-homologacao
+    defaults:
+      run:
+        working-directory: platform/apps/api
+    steps:
+      - name: Checkout da branch de testes
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Node 24 sem cache de pacotes
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+          package-manager-cache: false
+      - name: Instalar dependencias sem credenciais dos provedores
+        working-directory: platform
+        run: npm ci --include=dev
+      - name: Gerar cliente Prisma sem conectar ao banco
+        working-directory: platform
+        env:
+          DATABASE_URL: postgresql://unused:unused@localhost/atendeia_test
+        run: npm run db:generate
+      - name: Executar somente Cloudinary real na branch isolada
+        id: cloudinary
+        env:
+          ATENDEIA_ACCEPTANCE_DATABASE_URL: ${{ secrets.ATENDEIA_ACCEPTANCE_DATABASE_URL }}
+          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+          CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+          CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
+          ATENDEIA_CLOUDINARY_EXPECTED_CLOUD: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+          ATENDEIA_RUN_CLOUDINARY_LIVE: "true"
+          ATENDEIA_TEST_EVIDENCE_DIR: ${{ runner.temp }}/atendeia-cloudinary-evidence
+        run: npm run test:neon-proxy -- --cloudinary
+      - name: Criar resumo sem segredos ou registros do banco
+        if: always()
+        env:
+          ATENDEIA_TEST_EVIDENCE_DIR: ${{ runner.temp }}/atendeia-cloudinary-evidence
+          ATENDEIA_CI_TEST_OUTCOME: ${{ steps.cloudinary.outcome }}
+        run: node scripts/test-support/cloudinary-ci-summary.mjs
+      - name: Disponibilizar somente resumo seguro
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: atendeia-cloudinary-safe-summary
+          path: ${{ runner.temp }}/atendeia-cloudinary-evidence/safe-summary.json
+          if-no-files-found: warn
+          retention-days: 3
