@@ -1,1 +1,1 @@
-diagnostico HTTP 403 autorizado em 2026-11-20; rodada 2
+diagnostico detalhado autorizado em 2026-11-20; rodada 3
