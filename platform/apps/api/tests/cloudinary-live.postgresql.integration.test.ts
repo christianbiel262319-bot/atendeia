@@ -107,7 +107,17 @@ suite("real Cloudinary with disposable images and real PostgreSQL", () => {
       `https://api.cloudinary.com/v1_1/${encodeURIComponent(c.cloud)}/image/upload`,
       { method: "POST", body, signal: AbortSignal.timeout(20000) },
     );
-    if (!r.ok) throw new Error(`Disposable upload failed (HTTP ${r.status})`);
+    if (!r.ok) {
+      const responseText = (await r.text()).slice(0, 4096).toLowerCase();
+      const category =
+        /invalid signature|signature mismatch/.test(responseText) ? "assinatura_invalida" :
+        /invalid api key|invalid api secret|unknown api key/.test(responseText) ? "credencial_invalida" :
+        /preset/.test(responseText) ? "restricao_preset" :
+        /disabled|suspended|blocked/.test(responseText) ? "conta_ou_upload_bloqueado" :
+        /not allowed|not permitted|forbidden|restriction|denied/.test(responseText) ? "permissao_negada" :
+        "motivo_nao_classificado";
+      throw new Error("Disposable upload failed (HTTP " + r.status + "; category=" + category + ")");
+    }
     const receipt = (await r.json()) as CloudinaryIdentity & {
       secure_url: string;
       version: number;
