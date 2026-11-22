@@ -88,6 +88,7 @@ suite("real Cloudinary with disposable images and real PostgreSQL", () => {
     if (await lookup(publicId))
       throw new Error("Disposable public ID already exists; refusing upload");
     const params = {
+      asset_folder: "atendeia-homologação",
       public_id: publicId,
       tags: disposableTag(runId),
       overwrite: "false",

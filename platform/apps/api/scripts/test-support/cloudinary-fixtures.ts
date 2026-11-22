@@ -7,6 +7,7 @@ export type DisposableImage = {
 export type CloudinaryIdentity = {
   public_id: string;
   asset_id: string;
+  asset_folder?: string;
   resource_type: string;
   type: string;
   tags?: string[];
@@ -51,6 +52,7 @@ export function assertDisposableOwnership(
     throw new Error("Refusing an asset outside this run's disposable manifest");
   }
   if (
+    remote.asset_folder !== "atendeia-homologação" ||
     remote.public_id !== publicId ||
     remote.asset_id !== fixture.assetId ||
     remote.resource_type !== "image" ||
